@@ -46,6 +46,7 @@ const TOKEN         = params.get("token") || "";
 const AMOUNT        = params.get("amount") || "";
 const COMMITMENT_ID = params.get("commitmentId") || "";
 const RECIPIENT     = params.get("recipient") || "";
+const CHAIN_OUT_ID  = Number(params.get("chainOut")) || 0;
 
 const CHAIN_NAMES = { 1: "Ethereum", 56: "BNB Chain", 42161: "Arbitrum", 137: "Polygon", 8453: "Base", 10: "Optimism" };
 const CHAIN_HEX = { 1: "0x1", 56: "0x38", 42161: "0xa4b1", 137: "0x89", 8453: "0x2105", 10: "0xa" };
@@ -93,7 +94,7 @@ function render() {
             </div>
             <div class="info-row">
                 <span class="label">Bridge to</span>
-                <span class="value">Arbitrum</span>
+                <span class="value">${CHAIN_NAMES[CHAIN_OUT_ID] || (CHAIN_OUT_ID ? "Chain " + CHAIN_OUT_ID : "N/A")}</span>
             </div>
             <div class="info-row">
                 <span class="label">Recipient</span>
@@ -184,7 +185,8 @@ async function startPayment() {
         status.innerHTML += `<br><a class="tx-link" href="${explorer}${tx.hash}" target="_blank">${tx.hash}</a>`;
 
         const receipt = await tx.wait();
-        setStatus(`Payment complete! Bridging to Arbitrum...`, "success");
+        const destChain = CHAIN_NAMES[CHAIN_OUT_ID] || "destination";
+        setStatus(`Payment complete! Bridging to ${destChain}...`, "success");
         status.innerHTML += `<br><a class="tx-link" href="${explorer}${tx.hash}" target="_blank">View on Explorer</a>`;
 
         btn.textContent = "Done";
