@@ -191,7 +191,7 @@ async function startPayment() {
 
         btn.textContent = "Done";
         btn.disabled = false;
-        btn.onclick = () => { window.close(); };
+        btn.onclick = () => { window.location.href = "metamask://"; };
     } catch (e) {
         setStatus(`Failed: ${e.message || e}`, "error");
         btn.disabled = false;
