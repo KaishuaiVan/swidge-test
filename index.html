@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AllScale Swidge Payment</title>
+    <script src="https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, sans-serif; background: #0f0f23; color: #eee; min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 20px; }
+        .card { background: #1a1a2e; border-radius: 16px; padding: 30px; max-width: 420px; width: 100%; }
+        h1 { font-size: 20px; text-align: center; margin-bottom: 20px; color: #e94560; }
+        .info { background: #16213e; border-radius: 8px; padding: 15px; margin-bottom: 15px; }
+        .info-row { display: flex; justify-content: space-between; margin: 8px 0; font-size: 14px; }
+        .info-row .label { color: #888; }
+        .info-row .value { color: #fff; font-weight: 600; word-break: break-all; max-width: 60%; text-align: right; }
+        .amount-display { text-align: center; font-size: 36px; font-weight: bold; margin: 20px 0; color: #4ade80; }
+        .btn { width: 100%; padding: 16px; border: none; border-radius: 12px; font-size: 18px; font-weight: 600; cursor: pointer; margin-top: 10px; }
+        .btn-primary { background: #e94560; color: #fff; }
+        .btn-primary:hover { background: #c73e54; }
+        .btn-primary:disabled { background: #444; cursor: not-allowed; }
+        .status { text-align: center; margin-top: 15px; font-size: 14px; min-height: 20px; }
+        .status.success { color: #4ade80; }
+        .status.error { color: #f87171; }
+        .status.pending { color: #fbbf24; }
+        .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid #fbbf24; border-top-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite; vertical-align: middle; margin-right: 8px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .tx-link { color: #60a5fa; text-decoration: none; word-break: break-all; font-size: 12px; }
+        .tx-link:hover { text-decoration: underline; }
+        .error-page { text-align: center; padding: 40px 20px; }
+        .error-page h2 { color: #f87171; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <div class="card" id="main">
+        <h1>AllScale Swidge Payment</h1>
+        <div id="content">Loading...</div>
+    </div>
+
+<script>
+// ==================== Parse URL params ====================
+const params = new URLSearchParams(window.location.search);
+const CHAIN_ID      = Number(params.get("chainId")) || 56;
+const CONTRACT      = params.get("contract") || "";
+const TOKEN         = params.get("token") || "";
+const AMOUNT        = params.get("amount") || "";
+const COMMITMENT_ID = params.get("commitmentId") || "";
+const RECIPIENT     = params.get("recipient") || "";
+
+const CHAIN_NAMES = { 1: "Ethereum", 56: "BNB Chain", 42161: "Arbitrum", 137: "Polygon", 8453: "Base", 10: "Optimism" };
+const CHAIN_HEX = { 1: "0x1", 56: "0x38", 42161: "0xa4b1", 137: "0x89", 8453: "0x2105", 10: "0xa" };
+const EXPLORERS = { 56: "https://bscscan.com/tx/", 1: "https://etherscan.io/tx/", 42161: "https://arbiscan.io/tx/" };
+
+const ERC20_ABI = [
+    "function balanceOf(address) view returns (uint256)",
+    "function decimals() view returns (uint8)",
+    "function allowance(address owner, address spender) view returns (uint256)",
+    "function approve(address spender, uint256 amount) returns (bool)"
+];
+const DEPOSIT_ABI = [
+    "function depositWithId(address token, uint256 amount, uint256 commitmentId)"
+];
+
+// ==================== Validate params ====================
+function validateParams() {
+    if (!CONTRACT || !TOKEN || !AMOUNT || !COMMITMENT_ID) {
+        return "Missing required parameters (contract, token, amount, commitmentId)";
+    }
+    if (!CHAIN_HEX[CHAIN_ID]) {
+        return `Unsupported chain ID: ${CHAIN_ID}`;
+    }
+    return null;
+}
+
+// ==================== Render ====================
+function render() {
+    const error = validateParams();
+    if (error) {
+        document.getElementById("content").innerHTML = `
+            <div class="error-page">
+                <h2>Invalid Payment Link</h2>
+                <p style="color:#888">${error}</p>
+            </div>`;
+        return;
+    }
+
+    document.getElementById("content").innerHTML = `
+        <div class="amount-display">${AMOUNT} USDT</div>
+        <div class="info">
+            <div class="info-row">
+                <span class="label">Network</span>
+                <span class="value">${CHAIN_NAMES[CHAIN_ID] || CHAIN_ID}</span>
+            </div>
+            <div class="info-row">
+                <span class="label">Bridge to</span>
+                <span class="value">Arbitrum</span>
+            </div>
+            <div class="info-row">
+                <span class="label">Recipient</span>
+                <span class="value">${RECIPIENT ? RECIPIENT.slice(0,8) + "..." + RECIPIENT.slice(-6) : "N/A"}</span>
+            </div>
+        </div>
+        <button class="btn btn-primary" id="btnPay" onclick="startPayment()">Connect Wallet & Pay</button>
+        <div class="status" id="status"></div>
+    `;
+}
+
+// ==================== Wait for wallet injection ====================
+async function waitForEthereum(maxWait = 3000) {
+    if (window.ethereum) return window.ethereum;
+    return new Promise((resolve) => {
+        const interval = setInterval(() => {
+            if (window.ethereum) { clearInterval(interval); resolve(window.ethereum); }
+        }, 100);
+        setTimeout(() => { clearInterval(interval); resolve(null); }, maxWait);
+    });
+}
+
+// ==================== Payment flow ====================
+async function startPayment() {
+    const btn = document.getElementById("btnPay");
+    const status = document.getElementById("status");
+    btn.disabled = true;
+
+    try {
+        // Step 1: Connect wallet (wait for injection in MetaMask mobile)
+        setStatus("Detecting wallet...", "pending");
+        const ethereum = await waitForEthereum();
+        if (!ethereum) {
+            setStatus("Wallet not found. Open this page in MetaMask browser.", "error");
+            btn.disabled = false;
+            return;
+        }
+
+        setStatus("Connecting wallet...", "pending");
+        const provider = new ethers.providers.Web3Provider(ethereum);
+        await provider.send("eth_requestAccounts", []);
+
+        // Switch chain if needed
+        const network = await provider.getNetwork();
+        if (network.chainId !== CHAIN_ID) {
+            setStatus(`Switching to ${CHAIN_NAMES[CHAIN_ID]}...`, "pending");
+            await ethereum.request({
+                method: "wallet_switchEthereumChain",
+                params: [{ chainId: CHAIN_HEX[CHAIN_ID] }]
+            });
+        }
+
+        const signer = new ethers.providers.Web3Provider(ethereum).getSigner();
+        const userAddress = await signer.getAddress();
+        setStatus(`Connected: ${userAddress.slice(0,8)}...`, "success");
+
+        // Step 2: Check balance
+        const usdt = new ethers.Contract(TOKEN, ERC20_ABI, signer);
+        const decimals = await usdt.decimals();
+        const amountWei = ethers.utils.parseUnits(AMOUNT, decimals);
+        const balance = await usdt.balanceOf(userAddress);
+
+        if (balance.lt(amountWei)) {
+            setStatus(`Insufficient USDT: ${ethers.utils.formatUnits(balance, decimals)}`, "error");
+            btn.disabled = false;
+            return;
+        }
+
+        // Step 3: Approve
+        setStatus("Checking allowance...", "pending");
+        const allowance = await usdt.allowance(userAddress, CONTRACT);
+        if (allowance.lt(amountWei)) {
+            setStatus("Approve USDT... (confirm in wallet)", "pending");
+            const approveTx = await usdt.approve(CONTRACT, ethers.constants.MaxUint256);
+            setStatus("Waiting for approve confirmation...", "pending");
+            await approveTx.wait();
+            setStatus("Approved!", "success");
+        }
+
+        // Step 4: depositWithId
+        setStatus("Sending deposit... (confirm in wallet)", "pending");
+        const depositContract = new ethers.Contract(CONTRACT, DEPOSIT_ABI, signer);
+        const commitUint256 = ethers.BigNumber.from("0x" + COMMITMENT_ID);
+
+        const tx = await depositContract.depositWithId(TOKEN, amountWei, commitUint256);
+        const explorer = EXPLORERS[CHAIN_ID] || "";
+        setStatus(`Deposit sent! Waiting for confirmation...`, "pending");
+        status.innerHTML += `<br><a class="tx-link" href="${explorer}${tx.hash}" target="_blank">${tx.hash}</a>`;
+
+        const receipt = await tx.wait();
+        setStatus(`Payment complete! Bridging to Arbitrum...`, "success");
+        status.innerHTML += `<br><a class="tx-link" href="${explorer}${tx.hash}" target="_blank">View on Explorer</a>`;
+
+        btn.textContent = "Done";
+    } catch (e) {
+        setStatus(`Failed: ${e.message || e}`, "error");
+        btn.disabled = false;
+        btn.textContent = "Retry";
+    }
+}
+
+function setStatus(msg, type) {
+    const el = document.getElementById("status");
+    const icon = type === "pending" ? '<span class="spinner"></span>' : "";
+    el.className = `status ${type}`;
+    el.innerHTML = `${icon}${msg}`;
+}
+
+// Init
+render();
+</script>
+</body>
+</html>
