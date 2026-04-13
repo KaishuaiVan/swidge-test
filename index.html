@@ -209,7 +209,8 @@ const ERC20_ABI = [
 ];
 const DEPOSIT_ABI = ["function depositWithId(address token, uint256 amount, uint256 commitmentId)"];
 
-let currentStep = 0; // 0=init, 1=connected, 2=quoted, 3=approved, 4=sent, 5=done
+let currentStep = 0; // 0=init, 1=deposit(active), 2=bridging, 3=completed
+let jwtToken = null; // saved for status polling
 
 function updateStepper() {
     const steps = document.querySelectorAll('.step-circle');
@@ -246,15 +247,11 @@ function render() {
 
         <!-- Stepper -->
         <div class="stepper">
-            <div class="step-col"><div class="step-circle active">1</div><div class="step-label">Connect</div></div>
+            <div class="step-col"><div class="step-circle active">1</div><div class="step-label">Deposit</div></div>
             <div class="step-line"></div>
-            <div class="step-col"><div class="step-circle pending">2</div><div class="step-label">Quote</div></div>
+            <div class="step-col"><div class="step-circle pending">2</div><div class="step-label">Bridging</div></div>
             <div class="step-line"></div>
-            <div class="step-col"><div class="step-circle pending">3</div><div class="step-label">Approve</div></div>
-            <div class="step-line"></div>
-            <div class="step-col"><div class="step-circle pending">4</div><div class="step-label">Deposit</div></div>
-            <div class="step-line"></div>
-            <div class="step-col"><div class="step-circle pending">5</div><div class="step-label">Bridging</div></div>
+            <div class="step-col"><div class="step-circle pending">3</div><div class="step-label">Completed</div></div>
         </div>
 
         <!-- Info -->
@@ -337,7 +334,6 @@ async function startPayment() {
 
         const signer = new ethers.providers.Web3Provider(ethereum).getSigner();
         const userAddress = await signer.getAddress();
-        currentStep = 1; updateStepper();
         setStatus(`Connected: ${userAddress.slice(0,6)}...${userAddress.slice(-4)}`, "success");
 
         // Step 2: Quote (Scan to Pay mode)
@@ -348,6 +344,7 @@ async function startPayment() {
                 const authText = await authRes.text();
                 let jwt = authText;
                 try { const d = JSON.parse(authText); jwt = d.jwt || d.token || authText; } catch(e) {}
+                jwtToken = jwt; // save for status polling
 
                 const chainIn = CHAIN_MAP[CHAIN_ID] || "BINANCE";
                 const chainOut = CHAIN_MAP[CHAIN_OUT_ID] || "ARBITRUM";
@@ -383,13 +380,10 @@ async function startPayment() {
                 const platformEl = document.getElementById("qt-platform");
                 if (platformEl) platformEl.textContent = `${fee.platformFee || "0"} USDT`;
 
-                currentStep = 2; updateStepper();
                 setStatus(`Quote: pay ${AMOUNT} → receive ${quote.receiveAmount} USDT`, "success");
             } catch (e) {
                 setStatus(`Quote failed: ${e.message}`, "error"); btn.disabled = false; return;
             }
-        } else {
-            currentStep = 2; updateStepper();
         }
 
         // Step 3: Balance + Approve
@@ -407,30 +401,70 @@ async function startPayment() {
             setStatus("Waiting for approve...", "pending");
             await approveTx.wait();
         }
-        currentStep = 3; updateStepper();
-        setStatus("Approved!", "success");
-
-        // Step 4: depositWithId
+        // Step 1: Deposit
+        currentStep = 1; updateStepper();
         setStatus("Sending deposit... (confirm in wallet)", "pending");
         const depositContract = new ethers.Contract(CONTRACT, DEPOSIT_ABI, signer);
         const commitUint256 = ethers.BigNumber.from("0x" + COMMITMENT_ID);
         const tx = await depositContract.depositWithId(TOKEN, amountWei, commitUint256);
         const explorer = EXPLORERS[CHAIN_ID] || "";
+        const destExplorer = EXPLORERS[CHAIN_OUT_ID] || "";
 
-        currentStep = 4; updateStepper();
-        setStatus("Waiting for confirmation...", "pending");
-        const receipt = await tx.wait();
+        setStatus("Waiting for on-chain confirmation...", "pending");
+        await tx.wait();
 
-        // Step 5: Done
-        currentStep = 5; updateStepper();
+        // Step 2: Bridging — poll Rhino.fi status for destination arrival
+        currentStep = 2; updateStepper();
         const destChain = CHAIN_NAMES[CHAIN_OUT_ID] || "destination";
-        setStatus(`Payment complete! Bridging to ${destChain}...`, "success");
-        const statusEl = document.getElementById("status");
-        statusEl.innerHTML += `<br><a class="tx-link" href="${explorer}${tx.hash}" target="_blank">View on Explorer</a>`;
+        setStatus(`Deposit confirmed! Bridging to ${destChain}...`, "pending");
+
+        // Poll bridge status
+        const bridgeId = COMMITMENT_ID;
+        let bridgeDone = false;
+        for (let i = 0; i < 60; i++) { // poll up to 10 min
+            await new Promise(r => setTimeout(r, 10000));
+            try {
+                const statusRes = await fetch(`${RHINOFI_API}/history/bridge/${bridgeId}`, {
+                    headers: jwtToken ? { "Authorization": jwtToken } : {}
+                });
+                if (statusRes.ok) {
+                    const statusData = await statusRes.json();
+                    const state = statusData.state || "";
+                    if (state === "EXECUTED") {
+                        bridgeDone = true;
+                        const withdrawTx = statusData.withdrawTxHash || "";
+                        // Step 3: Completed
+                        currentStep = 3; updateStepper();
+                        setStatus("✅ Payment complete! Merchant has been paid.", "success");
+                        const statusEl = document.getElementById("status");
+                        if (withdrawTx && destExplorer) {
+                            statusEl.innerHTML += `<br><a class="tx-link" href="${destExplorer}${withdrawTx}" target="_blank">View arrival on ${destChain}</a>`;
+                        }
+                        statusEl.innerHTML += `<br><a class="tx-link" href="${explorer}${tx.hash}" target="_blank">View deposit tx</a>`;
+                        break;
+                    } else if (state === "FAILED" || state === "REFUNDED") {
+                        setStatus(`Bridge ${state}. Contact support.`, "error");
+                        break;
+                    }
+                    setStatus(`Bridging to ${destChain}... (${state || "processing"})`, "pending");
+                }
+            } catch (e) {
+                // Status API error, keep polling
+            }
+        }
+
+        if (!bridgeDone && currentStep < 3) {
+            // Polling timed out but deposit was confirmed
+            currentStep = 3; updateStepper();
+            setStatus("✅ Deposit confirmed! Bridge in progress.", "success");
+            const statusEl = document.getElementById("status");
+            statusEl.innerHTML += `<br><a class="tx-link" href="${explorer}${tx.hash}" target="_blank">View deposit tx</a>`;
+            statusEl.innerHTML += `<br><span style="font-size:11px;color:var(--as-text);">Bridge may take a few minutes. Check your wallet later.</span>`;
+        }
 
         btn.textContent = "Done";
         btn.disabled = false;
-        btn.onclick = () => { setStatus("Tap back arrow to return to wallet.", "success"); };
+        btn.onclick = () => { setStatus("Tap ← back arrow to return to wallet.", "success"); };
     } catch (e) {
         setStatus(`Failed: ${e.message || e}`, "error");
         btn.disabled = false;
