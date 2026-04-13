@@ -224,10 +224,11 @@ async function startPayment() {
                 RECIPIENT = userAddress;
                 // Update display with real values
                 document.querySelector(".amount-display").textContent = `${AMOUNT} USDT`;
-                const recipientRow = document.getElementById("recipient-row");
-                const recipientVal = document.getElementById("recipient-val");
-                if (recipientRow) recipientRow.style.display = "";
-                if (recipientVal) recipientVal.textContent = (RECIPIENT || userAddress).slice(0,8) + "..." + (RECIPIENT || userAddress).slice(-6);
+                // Keep merchant name if provided, don't overwrite with wallet address
+                if (!params.get("merchant")) {
+                    const recipientVal = document.getElementById("recipient-val");
+                    if (recipientVal) recipientVal.textContent = (RECIPIENT || userAddress).slice(0,8) + "..." + (RECIPIENT || userAddress).slice(-6);
+                }
                 setStatus(`Quote: pay ${AMOUNT} USDT → receive ${quote.receiveAmount} USDT`, "success");
             } catch (e) {
                 setStatus(`Quote failed: ${e.message}`, "error");
