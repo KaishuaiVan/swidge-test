@@ -41,12 +41,33 @@
 // ==================== Parse URL params ====================
 const params = new URLSearchParams(window.location.search);
 const CHAIN_ID      = Number(params.get("chainId")) || 56;
-const CONTRACT      = params.get("contract") || "";
-const TOKEN         = params.get("token") || "";
-const AMOUNT        = params.get("amount") || "";
-const COMMITMENT_ID = params.get("commitmentId") || "";
-const RECIPIENT     = params.get("recipient") || "";
+const CHECKOUT_ID   = params.get("checkout_id") || "";
+const TOKEN_SYMBOL  = params.get("token") || "USDT";
+const ORDER_AMOUNT  = params.get("amount") || "";
 const CHAIN_OUT_ID  = Number(params.get("chainOut")) || 0;
+
+// These may come from URL (Connect Wallet POC) or from backend API (Scan to Pay)
+let CONTRACT      = params.get("contract") || "";
+let TOKEN         = params.get("tokenAddress") || "";
+let AMOUNT        = params.get("payAmount") || ORDER_AMOUNT;
+let COMMITMENT_ID = params.get("commitmentId") || "";
+let RECIPIENT     = params.get("recipient") || "";
+
+// Scan to Pay mode: no commitmentId in URL, need to fetch after wallet connect
+const SCAN_TO_PAY_MODE = !COMMITMENT_ID;
+
+// Rhino.fi API (direct client-side call for Scan to Pay mode)
+const RHINOFI_API = "https://api.rhino.fi";
+const RHINOFI_API_KEY = "PUBLIC-651d4898-f023-4f51-adcf-35f5b0653c2c";
+const CHAIN_MAP = { 56: "BINANCE", 42161: "ARBITRUM", 1: "ETHEREUM", 137: "MATIC_POS", 8453: "BASE", 10: "OPTIMISM" };
+const DEPOSIT_CONTRACTS = {
+    56: "0xb80a582fa430645a043bb4f6135321ee01005fef",
+    42161: "0x10417734001162Ea139e8b044DFe28DbB8B28ad0",
+};
+const TOKEN_ADDRESSES = {
+    56: { "USDT": "0x55d398326f99059fF775485246999027B3197955" },
+    42161: { "USDT": "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9" },
+};
 
 const CHAIN_NAMES = { 1: "Ethereum", 56: "BNB Chain", 42161: "Arbitrum", 137: "Polygon", 8453: "Base", 10: "Optimism" };
 const CHAIN_HEX = { 1: "0x1", 56: "0x38", 42161: "0xa4b1", 137: "0x89", 8453: "0x2105", 10: "0xa" };
@@ -64,11 +85,15 @@ const DEPOSIT_ABI = [
 
 // ==================== Validate params ====================
 function validateParams() {
-    if (!CONTRACT || !TOKEN || !AMOUNT || !COMMITMENT_ID) {
-        return "Missing required parameters (contract, token, amount, commitmentId)";
+    if (!ORDER_AMOUNT && !AMOUNT) {
+        return "Missing amount parameter";
     }
     if (!CHAIN_HEX[CHAIN_ID]) {
         return `Unsupported chain ID: ${CHAIN_ID}`;
+    }
+    // In Scan to Pay mode, contract/token/commitmentId will be fetched after wallet connect
+    if (!SCAN_TO_PAY_MODE && (!CONTRACT || !TOKEN || !COMMITMENT_ID)) {
+        return "Missing required parameters (contract, token, commitmentId)";
     }
     return null;
 }
@@ -85,8 +110,9 @@ function render() {
         return;
     }
 
+    const displayAmount = SCAN_TO_PAY_MODE ? ORDER_AMOUNT : AMOUNT;
     document.getElementById("content").innerHTML = `
-        <div class="amount-display">${AMOUNT} USDT</div>
+        <div class="amount-display">${displayAmount} USDT</div>
         <div class="info">
             <div class="info-row">
                 <span class="label">Network</span>
@@ -151,6 +177,59 @@ async function startPayment() {
         const userAddress = await signer.getAddress();
         setStatus(`Connected: ${userAddress.slice(0,8)}...`, "success");
 
+        // Scan to Pay mode: call Rhino.fi API directly to get quote + commit
+        if (SCAN_TO_PAY_MODE) {
+            setStatus("Authenticating...", "pending");
+            try {
+                // 1. Auth
+                const authRes = await fetch(`${RHINOFI_API}/authentication/auth/apiKey`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ apiKey: RHINOFI_API_KEY })
+                });
+                const authText = await authRes.text();
+                let jwt = authText;
+                try { const d = JSON.parse(authText); jwt = d.jwt || d.token || authText; } catch(e) {}
+
+                // 2. Quote
+                setStatus("Getting quote...", "pending");
+                const chainIn = CHAIN_MAP[CHAIN_ID] || "BINANCE";
+                const chainOut = CHAIN_MAP[CHAIN_OUT_ID] || "ARBITRUM";
+                const quoteRes = await fetch(`${RHINOFI_API}/bridge/quote/user`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", "Authorization": jwt },
+                    body: JSON.stringify({
+                        token: TOKEN_SYMBOL, chainIn, chainOut,
+                        amount: ORDER_AMOUNT, mode: "receive",
+                        depositor: userAddress, recipient: userAddress,
+                    })
+                });
+                const quote = await quoteRes.json();
+                if (!quote.quoteId) throw new Error(JSON.stringify(quote));
+
+                // 3. Commit
+                setStatus("Locking quote...", "pending");
+                const commitRes = await fetch(`${RHINOFI_API}/bridge/quote/commit/${quote.quoteId}`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", "Authorization": jwt },
+                    body: JSON.stringify({})
+                });
+                const commit = await commitRes.json();
+
+                // Update globals
+                CONTRACT = DEPOSIT_CONTRACTS[CHAIN_ID] || "";
+                TOKEN = (TOKEN_ADDRESSES[CHAIN_ID] || {})[TOKEN_SYMBOL] || "";
+                AMOUNT = quote.payAmount;
+                COMMITMENT_ID = commit.commitmentId || commit.quoteId || quote.quoteId;
+                RECIPIENT = userAddress;
+                setStatus(`Quote: pay ${AMOUNT} USDT → receive ${quote.receiveAmount} USDT`, "success");
+            } catch (e) {
+                setStatus(`Quote failed: ${e.message}`, "error");
+                btn.disabled = false;
+                return;
+            }
+        }
+
         // Step 2: Check balance
         const usdt = new ethers.Contract(TOKEN, ERC20_ABI, signer);
         const decimals = await usdt.decimals();
@@ -191,7 +270,7 @@ async function startPayment() {
 
         btn.textContent = "Done";
         btn.disabled = false;
-        btn.onclick = () => { window.location.href = "metamask://"; };
+        btn.onclick = () => { setStatus("Tap the back arrow (top left) to return to wallet.", "success"); };
     } catch (e) {
         setStatus(`Failed: ${e.message || e}`, "error");
         btn.disabled = false;
