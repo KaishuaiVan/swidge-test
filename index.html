@@ -311,18 +311,21 @@ async function waitForEthereum(maxWait = 3000) {
     });
 }
 
-// ==================== Payment flow ====================
-async function startPayment() {
+// ==================== Auto-init: connect wallet + quote on page load ====================
+let walletSigner = null;
+let walletAddress = null;
+
+async function autoInit() {
     const btn = document.getElementById("btnPay");
     btn.disabled = true;
+    btn.textContent = "Loading...";
 
     try {
-        // Step 1: Connect
-        setStatus("Detecting wallet...", "pending");
-        const ethereum = await waitForEthereum();
-        if (!ethereum) { setStatus("Wallet not found. Open in wallet browser.", "error"); btn.disabled = false; return; }
-
+        // Auto-connect wallet
         setStatus("Connecting wallet...", "pending");
+        const ethereum = await waitForEthereum();
+        if (!ethereum) { setStatus("Wallet not found. Open in wallet browser.", "error"); return; }
+
         const provider = new ethers.providers.Web3Provider(ethereum);
         await provider.send("eth_requestAccounts", []);
 
@@ -332,76 +335,100 @@ async function startPayment() {
             await ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: CHAIN_HEX[CHAIN_ID] }] });
         }
 
-        const signer = new ethers.providers.Web3Provider(ethereum).getSigner();
-        const userAddress = await signer.getAddress();
-        setStatus(`Connected: ${userAddress.slice(0,6)}...${userAddress.slice(-4)}`, "success");
+        walletSigner = new ethers.providers.Web3Provider(ethereum).getSigner();
+        walletAddress = await walletSigner.getAddress();
 
-        // Step 2: Quote (Scan to Pay mode)
+        // Auto-quote (Scan to Pay mode)
         if (SCAN_TO_PAY_MODE) {
             setStatus("Getting quote...", "pending");
-            try {
-                const authRes = await fetch(`${RHINOFI_API}/authentication/auth/apiKey`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ apiKey: RHINOFI_API_KEY }) });
-                const authText = await authRes.text();
-                let jwt = authText;
-                try { const d = JSON.parse(authText); jwt = d.jwt || d.token || authText; } catch(e) {}
-                jwtToken = jwt; // save for status polling
+            const authRes = await fetch(`${RHINOFI_API}/authentication/auth/apiKey`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ apiKey: RHINOFI_API_KEY }) });
+            const authText = await authRes.text();
+            let jwt = authText;
+            try { const d = JSON.parse(authText); jwt = d.jwt || d.token || authText; } catch(e) {}
+            jwtToken = jwt;
 
-                const chainIn = CHAIN_MAP[CHAIN_ID] || "BINANCE";
-                const chainOut = CHAIN_MAP[CHAIN_OUT_ID] || "ARBITRUM";
-                const quoteRes = await fetch(`${RHINOFI_API}/bridge/quote/user`, {
-                    method: "POST", headers: { "Content-Type": "application/json", "Authorization": jwt },
-                    body: JSON.stringify({ token: TOKEN_SYMBOL, chainIn, chainOut, amount: ORDER_AMOUNT, mode: "receive", depositor: userAddress, recipient: userAddress })
-                });
-                const quote = await quoteRes.json();
-                if (!quote.quoteId) throw new Error(JSON.stringify(quote));
+            const chainIn = CHAIN_MAP[CHAIN_ID] || "BINANCE";
+            const chainOut = CHAIN_MAP[CHAIN_OUT_ID] || "ARBITRUM";
+            const quoteRes = await fetch(`${RHINOFI_API}/bridge/quote/user`, {
+                method: "POST", headers: { "Content-Type": "application/json", "Authorization": jwt },
+                body: JSON.stringify({ token: TOKEN_SYMBOL, chainIn, chainOut, amount: ORDER_AMOUNT, mode: "receive", depositor: walletAddress, recipient: walletAddress })
+            });
+            const quote = await quoteRes.json();
+            if (!quote.quoteId) throw new Error(JSON.stringify(quote));
 
-                setStatus("Locking quote...", "pending");
-                const commitRes = await fetch(`${RHINOFI_API}/bridge/quote/commit/${quote.quoteId}`, {
-                    method: "POST", headers: { "Content-Type": "application/json", "Authorization": jwt }, body: JSON.stringify({})
-                });
-                const commit = await commitRes.json();
+            setStatus("Locking quote...", "pending");
+            const commitRes = await fetch(`${RHINOFI_API}/bridge/quote/commit/${quote.quoteId}`, {
+                method: "POST", headers: { "Content-Type": "application/json", "Authorization": jwt }, body: JSON.stringify({})
+            });
+            const commit = await commitRes.json();
 
-                CONTRACT = DEPOSIT_CONTRACTS[CHAIN_ID] || "";
-                TOKEN = (TOKEN_ADDRESSES[CHAIN_ID] || {})[TOKEN_SYMBOL] || "";
-                AMOUNT = quote.payAmount;
-                COMMITMENT_ID = commit.commitmentId || commit.quoteId || quote.quoteId;
-                RECIPIENT = userAddress;
+            CONTRACT = DEPOSIT_CONTRACTS[CHAIN_ID] || "";
+            TOKEN = (TOKEN_ADDRESSES[CHAIN_ID] || {})[TOKEN_SYMBOL] || "";
+            AMOUNT = quote.payAmount;
+            COMMITMENT_ID = commit.commitmentId || commit.quoteId || quote.quoteId;
+            RECIPIENT = walletAddress;
 
-                // Update UI
-                const payEl = document.getElementById("pay-amount");
-                if (payEl) payEl.textContent = `${AMOUNT} USDT`;
-                const qs = document.getElementById("quote-section");
-                if (qs) qs.style.display = "";
-                const fee = quote.fees || {};
-                const feeEl = document.getElementById("qt-fee-total");
-                if (feeEl) feeEl.textContent = `${fee.fee || "0"} USDT`;
-                const bridgeEl = document.getElementById("qt-bridge");
-                if (bridgeEl) bridgeEl.textContent = `${fee.gasFee || "0"} USDT`;
-                const platformEl = document.getElementById("qt-platform");
-                if (platformEl) platformEl.textContent = `${fee.platformFee || "0"} USDT`;
-
-                setStatus(`Quote: pay ${AMOUNT} → receive ${quote.receiveAmount} USDT`, "success");
-            } catch (e) {
-                setStatus(`Quote failed: ${e.message}`, "error"); btn.disabled = false; return;
+            // Update UI with quote data
+            const payEl = document.getElementById("pay-amount");
+            if (payEl) payEl.textContent = `${AMOUNT} USDT`;
+            const amountNum = document.querySelector(".amount-num");
+            const amountFrac = document.querySelector(".amount-frac");
+            if (amountNum && amountFrac) {
+                const parts = AMOUNT.split(".");
+                amountNum.textContent = parts[0] || AMOUNT;
+                amountFrac.textContent = (parts[1] ? "." + parts[1] : ".00") + " USDT";
             }
+            const qs = document.getElementById("quote-section");
+            if (qs) qs.style.display = "";
+            const fee = quote.fees || {};
+            const feeEl = document.getElementById("qt-fee-total");
+            if (feeEl) feeEl.textContent = `${fee.fee || "0"} USDT`;
+            const bridgeEl = document.getElementById("qt-bridge");
+            if (bridgeEl) bridgeEl.textContent = `${fee.gasFee || "0"} USDT`;
+            const platformEl = document.getElementById("qt-platform");
+            if (platformEl) platformEl.textContent = `${fee.platformFee || "0"} USDT`;
         }
 
-        // Step 3: Balance + Approve
-        const usdt = new ethers.Contract(TOKEN, ERC20_ABI, signer);
+        // Ready to pay
+        setStatus(`Ready. Connected: ${walletAddress.slice(0,6)}...${walletAddress.slice(-4)}`, "success");
+        btn.textContent = "Confirm & Pay";
+        btn.disabled = false;
+    } catch (e) {
+        setStatus(`Init failed: ${e.message}`, "error");
+        document.getElementById("btnPay").textContent = "Retry";
+        document.getElementById("btnPay").disabled = false;
+        document.getElementById("btnPay").onclick = autoInit;
+    }
+}
+
+// ==================== Payment flow (only approve + deposit) ====================
+async function startPayment() {
+    const btn = document.getElementById("btnPay");
+    btn.disabled = true;
+
+    try {
+        if (!walletSigner || !COMMITMENT_ID) {
+            setStatus("Not ready. Reconnecting...", "pending");
+            await autoInit();
+            return;
+        }
+
+        // Approve
+        const usdt = new ethers.Contract(TOKEN, ERC20_ABI, walletSigner);
         const decimals = await usdt.decimals();
         const amountWei = ethers.utils.parseUnits(AMOUNT, decimals);
-        const balance = await usdt.balanceOf(userAddress);
+        const balance = await usdt.balanceOf(walletAddress);
         if (balance.lt(amountWei)) { setStatus(`Insufficient USDT: ${ethers.utils.formatUnits(balance, decimals)}`, "error"); btn.disabled = false; return; }
 
-        setStatus("Checking allowance...", "pending");
-        const allowance = await usdt.allowance(userAddress, CONTRACT);
+        const allowance = await usdt.allowance(walletAddress, CONTRACT);
         if (allowance.lt(amountWei)) {
             setStatus("Approve USDT... (confirm in wallet)", "pending");
             const approveTx = await usdt.approve(CONTRACT, ethers.constants.MaxUint256);
             setStatus("Waiting for approve...", "pending");
             await approveTx.wait();
         }
-        // Step 1: Deposit
+
+        // Deposit
         currentStep = 1; updateStepper();
         setStatus("Sending deposit... (confirm in wallet)", "pending");
         const depositContract = new ethers.Contract(CONTRACT, DEPOSIT_ABI, signer);
@@ -462,6 +489,8 @@ function setStatus(msg, type) {
 }
 
 render();
+// Auto-init: connect wallet + get quote on page load
+setTimeout(autoInit, 500);
 </script>
 </body>
 </html>
