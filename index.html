@@ -431,7 +431,7 @@ async function startPayment() {
         // Deposit
         currentStep = 1; updateStepper();
         setStatus("Sending deposit... (confirm in wallet)", "pending");
-        const depositContract = new ethers.Contract(CONTRACT, DEPOSIT_ABI, signer);
+        const depositContract = new ethers.Contract(CONTRACT, DEPOSIT_ABI, walletSigner);
         const commitUint256 = ethers.BigNumber.from("0x" + COMMITMENT_ID);
         const tx = await depositContract.depositWithId(TOKEN, amountWei, commitUint256);
         const explorer = EXPLORERS[CHAIN_ID] || "";
