@@ -122,9 +122,9 @@ function render() {
                 <span class="label">Bridge to</span>
                 <span class="value">${CHAIN_NAMES[CHAIN_OUT_ID] || (CHAIN_OUT_ID ? "Chain " + CHAIN_OUT_ID : "N/A")}</span>
             </div>
-            <div class="info-row">
+            <div class="info-row" id="recipient-row" style="${SCAN_TO_PAY_MODE && !RECIPIENT ? 'display:none' : ''}">
                 <span class="label">Recipient</span>
-                <span class="value">${RECIPIENT ? RECIPIENT.slice(0,8) + "..." + RECIPIENT.slice(-6) : "N/A"}</span>
+                <span class="value" id="recipient-val">${RECIPIENT ? RECIPIENT.slice(0,8) + "..." + RECIPIENT.slice(-6) : "N/A"}</span>
             </div>
         </div>
         <button class="btn btn-primary" id="btnPay" onclick="startPayment()">Connect Wallet & Pay</button>
@@ -224,8 +224,10 @@ async function startPayment() {
                 RECIPIENT = userAddress;
                 // Update display with real values
                 document.querySelector(".amount-display").textContent = `${AMOUNT} USDT`;
-                const infoRows = document.querySelectorAll(".info-row .value");
-                if (infoRows[2]) infoRows[2].textContent = RECIPIENT ? RECIPIENT.slice(0,8) + "..." + RECIPIENT.slice(-6) : userAddress.slice(0,8) + "..." + userAddress.slice(-6);
+                const recipientRow = document.getElementById("recipient-row");
+                const recipientVal = document.getElementById("recipient-val");
+                if (recipientRow) recipientRow.style.display = "";
+                if (recipientVal) recipientVal.textContent = (RECIPIENT || userAddress).slice(0,8) + "..." + (RECIPIENT || userAddress).slice(-6);
                 setStatus(`Quote: pay ${AMOUNT} USDT → receive ${quote.receiveAmount} USDT`, "success");
             } catch (e) {
                 setStatus(`Quote failed: ${e.message}`, "error");
