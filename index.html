@@ -3,38 +3,174 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AllScale Swidge Payment</title>
+    <title>AllScale — Swidge Payment</title>
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js"></script>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: -apple-system, sans-serif; background: #0f0f23; color: #eee; min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 20px; }
-        .card { background: #1a1a2e; border-radius: 16px; padding: 30px; max-width: 420px; width: 100%; }
-        h1 { font-size: 20px; text-align: center; margin-bottom: 20px; color: #e94560; }
-        .info { background: #16213e; border-radius: 8px; padding: 15px; margin-bottom: 15px; }
-        .info-row { display: flex; justify-content: space-between; margin: 8px 0; font-size: 14px; }
-        .info-row .label { color: #888; }
-        .info-row .value { color: #fff; font-weight: 600; word-break: break-all; max-width: 60%; text-align: right; }
-        .amount-display { text-align: center; font-size: 36px; font-weight: bold; margin: 20px 0; color: #4ade80; }
-        .btn { width: 100%; padding: 16px; border: none; border-radius: 12px; font-size: 18px; font-weight: 600; cursor: pointer; margin-top: 10px; }
-        .btn-primary { background: #e94560; color: #fff; }
-        .btn-primary:hover { background: #c73e54; }
-        .btn-primary:disabled { background: #444; cursor: not-allowed; }
-        .status { text-align: center; margin-top: 15px; font-size: 14px; min-height: 20px; }
-        .status.success { color: #4ade80; }
-        .status.error { color: #f87171; }
-        .status.pending { color: #fbbf24; }
-        .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid #fbbf24; border-top-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite; vertical-align: middle; margin-right: 8px; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .tx-link { color: #60a5fa; text-decoration: none; word-break: break-all; font-size: 12px; }
-        .tx-link:hover { text-decoration: underline; }
-        .error-page { text-align: center; padding: 40px 20px; }
-        .error-page h2 { color: #f87171; margin-bottom: 10px; }
+:root {
+  --as-green: #009859;
+  --as-dark: #0C3124;
+  --as-text: #83968F;
+  --as-card: #fafbfa;
+  --as-border: #e5eeea;
+  --as-brand-light: #12D16B;
+  --red: #E53E3E;
+  --orange: #F59E0B;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Archivo', sans-serif;
+  background: #FDFFFE;
+  color: var(--as-dark);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header */
+.header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px; position: sticky; top: 0; background: #FDFFFE; z-index: 10;
+}
+.back-btn {
+  width: 40px; height: 40px; border-radius: 50%; background: #F2F8F5;
+  border: none; cursor: pointer; display: flex; align-items: center; justify-content: center;
+}
+.header-title { font-size: 16px; font-weight: 600; letter-spacing: -0.02em; }
+
+/* Content */
+.content { flex: 1; padding: 0 20px 20px; display: flex; flex-direction: column; gap: 16px; }
+
+/* Amount card */
+.amount-card {
+  background: var(--as-card); border-radius: 12px; padding: 24px 16px;
+  display: flex; flex-direction: column; align-items: center;
+}
+.amount-num { font-size: 48px; font-weight: 700; letter-spacing: -0.04em; color: var(--as-dark); }
+.amount-frac { font-size: 24px; font-weight: 500; color: var(--as-text); }
+.amount-chain { font-size: 13px; color: var(--as-text); margin-top: 4px; }
+
+/* Info rows */
+.info-card {
+  background: white; border: 1px solid var(--as-border); border-radius: 14px; overflow: hidden;
+}
+.info-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 14px; border-bottom: 1px solid var(--as-border);
+}
+.info-row:last-child { border-bottom: none; }
+.info-lbl { font-size: 14px; color: var(--as-text); }
+.info-val { font-size: 14px; font-weight: 500; color: var(--as-dark); }
+.badge-sw {
+  display: inline-flex; align-items: center; background: rgba(0,152,89,.1);
+  border: 1px solid rgba(0,152,89,.25); border-radius: 999px; padding: 1px 7px;
+  font-size: 10px; font-weight: 700; color: var(--as-green); margin-left: 6px;
+}
+
+/* Quote box */
+.quote-box {
+  background: white; border: 1px solid var(--as-border); border-radius: 14px; overflow: hidden;
+}
+.qt-total {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 14px; border-bottom: 1px solid var(--as-border);
+}
+.qt-total-lbl { font-size: 15px; font-weight: 600; color: var(--as-dark); }
+.qt-total-val { font-size: 17px; font-weight: 700; color: var(--as-green); }
+.qt-rows { display: none; }
+.qt-rows.open { display: block; }
+.qt-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px; border-bottom: 1px solid var(--as-border);
+}
+.qt-row:last-child { border-bottom: none; }
+.qt-lbl { font-size: 13px; color: var(--as-text); }
+.qt-val { font-size: 13px; font-weight: 600; color: var(--as-dark); }
+.qt-expand {
+  display: flex; align-items: center; justify-content: center; gap: 5px;
+  width: 100%; padding: 8px; background: none; border: none; cursor: pointer;
+  font-size: 12px; font-weight: 600; color: var(--as-text); font-family: 'Archivo', sans-serif;
+  border-bottom: 1px solid var(--as-border);
+}
+
+/* Timer */
+.timer-pill {
+  display: flex; align-items: center; gap: 6px;
+  background: rgba(245,158,11,.1); border: 1px solid rgba(245,158,11,.3);
+  border-radius: 999px; padding: 4px 12px; font-size: 11.5px; font-weight: 600;
+  color: var(--orange); margin: 8px auto 0; width: fit-content;
+}
+.tdot { width: 6px; height: 6px; border-radius: 50%; background: var(--orange); animation: pulse 1s ease-in-out infinite; }
+@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:.3; } }
+
+/* Status */
+.status-box {
+  text-align: center; font-size: 13px; min-height: 20px; padding: 8px 0;
+}
+.status-box.success { color: var(--as-green); }
+.status-box.error { color: var(--red); }
+.status-box.pending { color: var(--orange); }
+.spinner {
+  display: inline-block; width: 14px; height: 14px;
+  border: 2px solid var(--orange); border-top-color: transparent;
+  border-radius: 50%; animation: spin 0.8s linear infinite; vertical-align: middle; margin-right: 6px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.tx-link { color: var(--as-green); text-decoration: underline; font-size: 12px; cursor: pointer; }
+
+/* Progress stepper */
+.stepper { display: flex; align-items: center; justify-content: center; gap: 0; margin: 8px 0; }
+.step-circle {
+  width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; flex-shrink: 0;
+}
+.step-circle.done { background: var(--as-green); color: white; }
+.step-circle.active { background: rgba(0,152,89,.15); border: 2px solid var(--as-green); color: var(--as-green); }
+.step-circle.pending { background: #f0f0f0; color: var(--as-text); }
+.step-line { width: 20px; height: 2px; background: var(--as-border); }
+.step-line.done { background: var(--as-green); }
+.step-label { font-size: 9px; color: var(--as-text); text-align: center; margin-top: 2px; }
+.step-col { display: flex; flex-direction: column; align-items: center; }
+
+/* Footer */
+.footer { padding: 12px 20px 32px; background: #FDFFFE; }
+.act-btn {
+  width: 100%; height: 52px; border-radius: 999px; border: none; cursor: pointer;
+  font-size: 16px; font-weight: 500; font-family: 'Archivo', sans-serif;
+  background: var(--as-dark); color: var(--as-brand-light); transition: opacity .15s;
+}
+.act-btn:hover { opacity: .88; }
+.act-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+/* Powered by */
+.powered { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 12px; opacity: .5; }
+.powered-icon {
+  width: 20px; height: 20px; background: var(--as-green); border-radius: 5px;
+  display: flex; align-items: center; justify-content: center;
+}
+.powered span { font-size: 12px; font-weight: 700; color: var(--as-dark); }
+
+.error-page { text-align: center; padding: 40px 20px; }
+.error-page h2 { color: var(--red); font-size: 18px; margin-bottom: 8px; }
     </style>
 </head>
 <body>
-    <div class="card" id="main">
-        <h1>AllScale Swidge Payment</h1>
-        <div id="content">Loading...</div>
+    <div class="header">
+        <button class="back-btn" onclick="history.back()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+        </button>
+        <span class="header-title">Swidge Payment</span>
+        <div style="width:40px;"></div>
+    </div>
+
+    <div class="content" id="content">Loading...</div>
+
+    <div class="footer">
+        <button class="act-btn" id="btnPay" onclick="startPayment()">Confirm & Pay</button>
+        <div class="powered">
+            <div class="powered-icon"><svg width="10" height="10" viewBox="0 0 32 32" fill="none"><path d="M8 22L16 10L24 22" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 18L22 18" stroke="white" stroke-width="2" stroke-linecap="round"/></svg></div>
+            <span>AllScale</span>
+        </div>
     </div>
 
 <script>
@@ -45,32 +181,24 @@ const CHECKOUT_ID   = params.get("checkout_id") || "";
 const TOKEN_SYMBOL  = params.get("token") || "USDT";
 const ORDER_AMOUNT  = params.get("amount") || "";
 const CHAIN_OUT_ID  = Number(params.get("chainOut")) || 0;
+const MERCHANT      = params.get("merchant") || "";
 
-// These may come from URL (Connect Wallet POC) or from backend API (Scan to Pay)
 let CONTRACT      = params.get("contract") || "";
 let TOKEN         = params.get("tokenAddress") || "";
 let AMOUNT        = params.get("payAmount") || ORDER_AMOUNT;
 let COMMITMENT_ID = params.get("commitmentId") || "";
 let RECIPIENT     = params.get("recipient") || "";
 
-// Scan to Pay mode: no commitmentId in URL, need to fetch after wallet connect
 const SCAN_TO_PAY_MODE = !COMMITMENT_ID;
 
-// Rhino.fi API (direct client-side call for Scan to Pay mode)
 const RHINOFI_API = "https://api.rhino.fi";
 const RHINOFI_API_KEY = "PUBLIC-651d4898-f023-4f51-adcf-35f5b0653c2c";
 const CHAIN_MAP = { 56: "BINANCE", 42161: "ARBITRUM", 1: "ETHEREUM", 137: "MATIC_POS", 8453: "BASE", 10: "OPTIMISM" };
-const DEPOSIT_CONTRACTS = {
-    56: "0xb80a582fa430645a043bb4f6135321ee01005fef",
-    42161: "0x10417734001162Ea139e8b044DFe28DbB8B28ad0",
-};
-const TOKEN_ADDRESSES = {
-    56: { "USDT": "0x55d398326f99059fF775485246999027B3197955" },
-    42161: { "USDT": "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9" },
-};
-
+const DEPOSIT_CONTRACTS = { 56: "0xb80a582fa430645a043bb4f6135321ee01005fef", 42161: "0x10417734001162Ea139e8b044DFe28DbB8B28ad0" };
+const TOKEN_ADDRESSES = { 56: { "USDT": "0x55d398326f99059fF775485246999027B3197955" }, 42161: { "USDT": "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9" } };
 const CHAIN_NAMES = { 1: "Ethereum", 56: "BNB Chain", 42161: "Arbitrum", 137: "Polygon", 8453: "Base", 10: "Optimism" };
 const CHAIN_HEX = { 1: "0x1", 56: "0x38", 42161: "0xa4b1", 137: "0x89", 8453: "0x2105", 10: "0xa" };
+const CHAIN_ICONS = { 56: "🟡", 42161: "🔵", 1: "⟠", 137: "🟣", 8453: "🔵", 10: "🔴" };
 const EXPLORERS = { 56: "https://bscscan.com/tx/", 1: "https://etherscan.io/tx/", 42161: "https://arbiscan.io/tx/" };
 
 const ERC20_ABI = [
@@ -79,66 +207,109 @@ const ERC20_ABI = [
     "function allowance(address owner, address spender) view returns (uint256)",
     "function approve(address spender, uint256 amount) returns (bool)"
 ];
-const DEPOSIT_ABI = [
-    "function depositWithId(address token, uint256 amount, uint256 commitmentId)"
-];
+const DEPOSIT_ABI = ["function depositWithId(address token, uint256 amount, uint256 commitmentId)"];
 
-// ==================== Validate params ====================
-function validateParams() {
-    if (!ORDER_AMOUNT && !AMOUNT) {
-        return "Missing amount parameter";
-    }
-    if (!CHAIN_HEX[CHAIN_ID]) {
-        return `Unsupported chain ID: ${CHAIN_ID}`;
-    }
-    // In Scan to Pay mode, contract/token/commitmentId will be fetched after wallet connect
-    if (!SCAN_TO_PAY_MODE && (!CONTRACT || !TOKEN || !COMMITMENT_ID)) {
-        return "Missing required parameters (contract, token, commitmentId)";
-    }
-    return null;
+let currentStep = 0; // 0=init, 1=connected, 2=quoted, 3=approved, 4=sent, 5=done
+
+function updateStepper() {
+    const steps = document.querySelectorAll('.step-circle');
+    const lines = document.querySelectorAll('.step-line');
+    if (!steps.length) return;
+    steps.forEach((s, i) => {
+        s.className = 'step-circle ' + (i < currentStep ? 'done' : i === currentStep ? 'active' : 'pending');
+        s.textContent = i < currentStep ? '✓' : (i + 1);
+    });
+    lines.forEach((l, i) => { l.className = 'step-line' + (i < currentStep ? ' done' : ''); });
 }
 
-// ==================== Render ====================
 function render() {
-    const error = validateParams();
-    if (error) {
-        document.getElementById("content").innerHTML = `
-            <div class="error-page">
-                <h2>Invalid Payment Link</h2>
-                <p style="color:#888">${error}</p>
-            </div>`;
+    if (!ORDER_AMOUNT && !AMOUNT) {
+        document.getElementById("content").innerHTML = `<div class="error-page"><h2>Invalid Payment Link</h2><p style="color:var(--as-text)">Missing amount parameter</p></div>`;
+        document.getElementById("btnPay").style.display = "none";
         return;
     }
 
     const displayAmount = SCAN_TO_PAY_MODE ? ORDER_AMOUNT : AMOUNT;
+    const parts = displayAmount.split(".");
+    const intPart = parts[0] || displayAmount;
+    const fracPart = parts[1] ? "." + parts[1] : ".00";
+    const recipientDisplay = MERCHANT || (RECIPIENT ? RECIPIENT.slice(0,8)+"..."+RECIPIENT.slice(-6) : "Merchant");
+
     document.getElementById("content").innerHTML = `
-        <div class="amount-display">${displayAmount} USDT</div>
-        <div class="info">
+        <div class="amount-card">
+            <div>
+                <span class="amount-num">${intPart}</span>
+                <span class="amount-frac">${fracPart} USDT</span>
+            </div>
+            <div class="amount-chain">on ${CHAIN_NAMES[CHAIN_ID] || "Chain " + CHAIN_ID}</div>
+        </div>
+
+        <!-- Stepper -->
+        <div class="stepper">
+            <div class="step-col"><div class="step-circle active">1</div><div class="step-label">Connect</div></div>
+            <div class="step-line"></div>
+            <div class="step-col"><div class="step-circle pending">2</div><div class="step-label">Quote</div></div>
+            <div class="step-line"></div>
+            <div class="step-col"><div class="step-circle pending">3</div><div class="step-label">Approve</div></div>
+            <div class="step-line"></div>
+            <div class="step-col"><div class="step-circle pending">4</div><div class="step-label">Deposit</div></div>
+            <div class="step-line"></div>
+            <div class="step-col"><div class="step-circle pending">5</div><div class="step-label">Bridging</div></div>
+        </div>
+
+        <!-- Info -->
+        <div class="info-card">
             <div class="info-row">
-                <span class="label">Network</span>
-                <span class="value">${CHAIN_NAMES[CHAIN_ID] || CHAIN_ID}</span>
+                <span class="info-lbl">You pay</span>
+                <span class="info-val" id="pay-amount">${displayAmount} USDT</span>
             </div>
             <div class="info-row">
-                <span class="label">Bridge to</span>
-                <span class="value">${CHAIN_NAMES[CHAIN_OUT_ID] || (CHAIN_OUT_ID ? "Chain " + CHAIN_OUT_ID : "N/A")}</span>
+                <span class="info-lbl">Merchant receives</span>
+                <span class="info-val">${ORDER_AMOUNT} USDT <span style="font-size:11px;color:var(--as-text);">on ${CHAIN_NAMES[CHAIN_OUT_ID] || ""}</span></span>
             </div>
             <div class="info-row">
-                <span class="label">Recipient</span>
-                <span class="value" id="recipient-val">${params.get("merchant") || (RECIPIENT ? RECIPIENT.slice(0,8) + "..." + RECIPIENT.slice(-6) : "Merchant")}</span>
+                <span class="info-lbl">Recipient</span>
+                <span class="info-val" id="recipient-val">${recipientDisplay}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-lbl">Route</span>
+                <span class="info-val">${CHAIN_ICONS[CHAIN_ID]||""} ${CHAIN_NAMES[CHAIN_ID]||""} → ${CHAIN_ICONS[CHAIN_OUT_ID]||""} ${CHAIN_NAMES[CHAIN_OUT_ID]||""} <span class="badge-sw">Swidge</span></span>
             </div>
         </div>
-        <button class="btn btn-primary" id="btnPay" onclick="startPayment()">Connect Wallet & Pay</button>
-        <div class="status" id="status"></div>
+
+        <!-- Quote details (shown after quote) -->
+        <div id="quote-section" style="display:none;">
+            <div class="quote-box">
+                <div class="qt-total">
+                    <span class="qt-total-lbl">Total fee</span>
+                    <span class="qt-total-val" id="qt-fee-total">—</span>
+                </div>
+                <button class="qt-expand" id="qt-expand-btn" onclick="document.getElementById('qt-detail').classList.toggle('open');this.querySelector('span').textContent=document.getElementById('qt-detail').classList.contains('open')?'Hide breakdown':'See fee breakdown'">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                    <span>See fee breakdown</span>
+                </button>
+                <div class="qt-rows" id="qt-detail">
+                    <div class="qt-row"><span class="qt-lbl">Swidge Fee</span><span class="qt-val" id="qt-bridge">—</span></div>
+                    <div class="qt-row"><span class="qt-lbl">Platform Fee</span><span class="qt-val" id="qt-platform">—</span></div>
+                </div>
+            </div>
+            <div class="timer-pill">
+                <div class="tdot"></div>
+                <span id="qt-timer">Quote valid for ~3 min</span>
+            </div>
+        </div>
+
+        <!-- Status -->
+        <div class="status-box" id="status"></div>
     `;
+    updateStepper();
 }
 
-// ==================== Wait for wallet injection ====================
+// ==================== Wait for wallet ====================
 async function waitForEthereum(maxWait = 3000) {
     if (window.ethereum) return window.ethereum;
     return new Promise((resolve) => {
-        const interval = setInterval(() => {
-            if (window.ethereum) { clearInterval(interval); resolve(window.ethereum); }
-        }, 100);
+        const interval = setInterval(() => { if (window.ethereum) { clearInterval(interval); resolve(window.ethereum); } }, 100);
         setTimeout(() => { clearInterval(interval); resolve(null); }, maxWait);
     });
 }
@@ -146,138 +317,120 @@ async function waitForEthereum(maxWait = 3000) {
 // ==================== Payment flow ====================
 async function startPayment() {
     const btn = document.getElementById("btnPay");
-    const status = document.getElementById("status");
     btn.disabled = true;
 
     try {
-        // Step 1: Connect wallet (wait for injection in MetaMask mobile)
+        // Step 1: Connect
         setStatus("Detecting wallet...", "pending");
         const ethereum = await waitForEthereum();
-        if (!ethereum) {
-            setStatus("Wallet not found. Open this page in MetaMask browser.", "error");
-            btn.disabled = false;
-            return;
-        }
+        if (!ethereum) { setStatus("Wallet not found. Open in wallet browser.", "error"); btn.disabled = false; return; }
 
         setStatus("Connecting wallet...", "pending");
         const provider = new ethers.providers.Web3Provider(ethereum);
         await provider.send("eth_requestAccounts", []);
 
-        // Switch chain if needed
         const network = await provider.getNetwork();
         if (network.chainId !== CHAIN_ID) {
             setStatus(`Switching to ${CHAIN_NAMES[CHAIN_ID]}...`, "pending");
-            await ethereum.request({
-                method: "wallet_switchEthereumChain",
-                params: [{ chainId: CHAIN_HEX[CHAIN_ID] }]
-            });
+            await ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: CHAIN_HEX[CHAIN_ID] }] });
         }
 
         const signer = new ethers.providers.Web3Provider(ethereum).getSigner();
         const userAddress = await signer.getAddress();
-        setStatus(`Connected: ${userAddress.slice(0,8)}...`, "success");
+        currentStep = 1; updateStepper();
+        setStatus(`Connected: ${userAddress.slice(0,6)}...${userAddress.slice(-4)}`, "success");
 
-        // Scan to Pay mode: call Rhino.fi API directly to get quote + commit
+        // Step 2: Quote (Scan to Pay mode)
         if (SCAN_TO_PAY_MODE) {
-            setStatus("Authenticating...", "pending");
+            setStatus("Getting quote...", "pending");
             try {
-                // 1. Auth
-                const authRes = await fetch(`${RHINOFI_API}/authentication/auth/apiKey`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ apiKey: RHINOFI_API_KEY })
-                });
+                const authRes = await fetch(`${RHINOFI_API}/authentication/auth/apiKey`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ apiKey: RHINOFI_API_KEY }) });
                 const authText = await authRes.text();
                 let jwt = authText;
                 try { const d = JSON.parse(authText); jwt = d.jwt || d.token || authText; } catch(e) {}
 
-                // 2. Quote
-                setStatus("Getting quote...", "pending");
                 const chainIn = CHAIN_MAP[CHAIN_ID] || "BINANCE";
                 const chainOut = CHAIN_MAP[CHAIN_OUT_ID] || "ARBITRUM";
                 const quoteRes = await fetch(`${RHINOFI_API}/bridge/quote/user`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json", "Authorization": jwt },
-                    body: JSON.stringify({
-                        token: TOKEN_SYMBOL, chainIn, chainOut,
-                        amount: ORDER_AMOUNT, mode: "receive",
-                        depositor: userAddress, recipient: userAddress,
-                    })
+                    method: "POST", headers: { "Content-Type": "application/json", "Authorization": jwt },
+                    body: JSON.stringify({ token: TOKEN_SYMBOL, chainIn, chainOut, amount: ORDER_AMOUNT, mode: "receive", depositor: userAddress, recipient: userAddress })
                 });
                 const quote = await quoteRes.json();
                 if (!quote.quoteId) throw new Error(JSON.stringify(quote));
 
-                // 3. Commit
                 setStatus("Locking quote...", "pending");
                 const commitRes = await fetch(`${RHINOFI_API}/bridge/quote/commit/${quote.quoteId}`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json", "Authorization": jwt },
-                    body: JSON.stringify({})
+                    method: "POST", headers: { "Content-Type": "application/json", "Authorization": jwt }, body: JSON.stringify({})
                 });
                 const commit = await commitRes.json();
 
-                // Update globals
                 CONTRACT = DEPOSIT_CONTRACTS[CHAIN_ID] || "";
                 TOKEN = (TOKEN_ADDRESSES[CHAIN_ID] || {})[TOKEN_SYMBOL] || "";
                 AMOUNT = quote.payAmount;
                 COMMITMENT_ID = commit.commitmentId || commit.quoteId || quote.quoteId;
                 RECIPIENT = userAddress;
-                // Update display with real values
-                document.querySelector(".amount-display").textContent = `${AMOUNT} USDT`;
-                // Keep merchant name if provided, don't overwrite with wallet address
-                if (!params.get("merchant")) {
-                    const recipientVal = document.getElementById("recipient-val");
-                    if (recipientVal) recipientVal.textContent = (RECIPIENT || userAddress).slice(0,8) + "..." + (RECIPIENT || userAddress).slice(-6);
-                }
-                setStatus(`Quote: pay ${AMOUNT} USDT → receive ${quote.receiveAmount} USDT`, "success");
+
+                // Update UI
+                const payEl = document.getElementById("pay-amount");
+                if (payEl) payEl.textContent = `${AMOUNT} USDT`;
+                const qs = document.getElementById("quote-section");
+                if (qs) qs.style.display = "";
+                const fee = quote.fees || {};
+                const feeEl = document.getElementById("qt-fee-total");
+                if (feeEl) feeEl.textContent = `${fee.fee || "0"} USDT`;
+                const bridgeEl = document.getElementById("qt-bridge");
+                if (bridgeEl) bridgeEl.textContent = `${fee.gasFee || "0"} USDT`;
+                const platformEl = document.getElementById("qt-platform");
+                if (platformEl) platformEl.textContent = `${fee.platformFee || "0"} USDT`;
+
+                currentStep = 2; updateStepper();
+                setStatus(`Quote: pay ${AMOUNT} → receive ${quote.receiveAmount} USDT`, "success");
             } catch (e) {
-                setStatus(`Quote failed: ${e.message}`, "error");
-                btn.disabled = false;
-                return;
+                setStatus(`Quote failed: ${e.message}`, "error"); btn.disabled = false; return;
             }
+        } else {
+            currentStep = 2; updateStepper();
         }
 
-        // Step 2: Check balance
+        // Step 3: Balance + Approve
         const usdt = new ethers.Contract(TOKEN, ERC20_ABI, signer);
         const decimals = await usdt.decimals();
         const amountWei = ethers.utils.parseUnits(AMOUNT, decimals);
         const balance = await usdt.balanceOf(userAddress);
+        if (balance.lt(amountWei)) { setStatus(`Insufficient USDT: ${ethers.utils.formatUnits(balance, decimals)}`, "error"); btn.disabled = false; return; }
 
-        if (balance.lt(amountWei)) {
-            setStatus(`Insufficient USDT: ${ethers.utils.formatUnits(balance, decimals)}`, "error");
-            btn.disabled = false;
-            return;
-        }
-
-        // Step 3: Approve
         setStatus("Checking allowance...", "pending");
         const allowance = await usdt.allowance(userAddress, CONTRACT);
         if (allowance.lt(amountWei)) {
             setStatus("Approve USDT... (confirm in wallet)", "pending");
             const approveTx = await usdt.approve(CONTRACT, ethers.constants.MaxUint256);
-            setStatus("Waiting for approve confirmation...", "pending");
+            setStatus("Waiting for approve...", "pending");
             await approveTx.wait();
-            setStatus("Approved!", "success");
         }
+        currentStep = 3; updateStepper();
+        setStatus("Approved!", "success");
 
         // Step 4: depositWithId
         setStatus("Sending deposit... (confirm in wallet)", "pending");
         const depositContract = new ethers.Contract(CONTRACT, DEPOSIT_ABI, signer);
         const commitUint256 = ethers.BigNumber.from("0x" + COMMITMENT_ID);
-
         const tx = await depositContract.depositWithId(TOKEN, amountWei, commitUint256);
         const explorer = EXPLORERS[CHAIN_ID] || "";
-        setStatus(`Deposit sent! Waiting for confirmation...`, "pending");
-        status.innerHTML += `<br><a class="tx-link" href="${explorer}${tx.hash}" target="_blank">${tx.hash}</a>`;
 
+        currentStep = 4; updateStepper();
+        setStatus("Waiting for confirmation...", "pending");
         const receipt = await tx.wait();
+
+        // Step 5: Done
+        currentStep = 5; updateStepper();
         const destChain = CHAIN_NAMES[CHAIN_OUT_ID] || "destination";
         setStatus(`Payment complete! Bridging to ${destChain}...`, "success");
-        status.innerHTML += `<br><a class="tx-link" href="${explorer}${tx.hash}" target="_blank">View on Explorer</a>`;
+        const statusEl = document.getElementById("status");
+        statusEl.innerHTML += `<br><a class="tx-link" href="${explorer}${tx.hash}" target="_blank">View on Explorer</a>`;
 
         btn.textContent = "Done";
         btn.disabled = false;
-        btn.onclick = () => { setStatus("Tap the back arrow (top left) to return to wallet.", "success"); };
+        btn.onclick = () => { setStatus("Tap back arrow to return to wallet.", "success"); };
     } catch (e) {
         setStatus(`Failed: ${e.message || e}`, "error");
         btn.disabled = false;
@@ -287,12 +440,12 @@ async function startPayment() {
 
 function setStatus(msg, type) {
     const el = document.getElementById("status");
+    if (!el) return;
     const icon = type === "pending" ? '<span class="spinner"></span>' : "";
-    el.className = `status ${type}`;
+    el.className = `status-box ${type}`;
     el.innerHTML = `${icon}${msg}`;
 }
 
-// Init
 render();
 </script>
 </body>
