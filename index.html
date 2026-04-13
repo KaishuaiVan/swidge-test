@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AllScale — Swidge Payment</title>
+    <title>AllScale — Swidge Payment V2</title>
     <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js"></script>
     <style>
@@ -18,136 +18,103 @@
   --orange: #F59E0B;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body {
-  font-family: 'Archivo', sans-serif;
-  background: #FDFFFE;
-  color: var(--as-dark);
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
+body { font-family: 'Archivo', sans-serif; background: #FDFFFE; color: var(--as-dark); min-height: 100vh; display: flex; flex-direction: column; }
 
-/* Header */
-.header {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 16px 20px; position: sticky; top: 0; background: #FDFFFE; z-index: 10;
-}
-.back-btn {
-  width: 40px; height: 40px; border-radius: 50%; background: #F2F8F5;
-  border: none; cursor: pointer; display: flex; align-items: center; justify-content: center;
-}
+.header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; position: sticky; top: 0; background: #FDFFFE; z-index: 10; }
+.back-btn { width: 40px; height: 40px; border-radius: 50%; background: #F2F8F5; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 .header-title { font-size: 16px; font-weight: 600; letter-spacing: -0.02em; }
 
-/* Content */
-.content { flex: 1; padding: 0 20px 20px; display: flex; flex-direction: column; gap: 16px; }
+.content { flex: 1; padding: 0 20px 20px; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; }
 
-/* Amount card */
-.amount-card {
-  background: var(--as-card); border-radius: 12px; padding: 24px 16px;
-  display: flex; flex-direction: column; align-items: center;
-}
+.amount-card { background: var(--as-card); border-radius: 12px; padding: 24px 16px; display: flex; flex-direction: column; align-items: center; }
 .amount-num { font-size: 48px; font-weight: 700; letter-spacing: -0.04em; color: var(--as-dark); }
 .amount-frac { font-size: 24px; font-weight: 500; color: var(--as-text); }
-.amount-chain { font-size: 13px; color: var(--as-text); margin-top: 4px; }
+.amount-sub { font-size: 13px; color: var(--as-text); margin-top: 4px; }
+.merchant-badge { display: inline-flex; align-items: center; gap: 8px; background: var(--as-card); border-radius: 16px; padding: 6px 14px; margin-top: 8px; }
+.merchant-avatar { width: 24px; height: 24px; border-radius: 50%; background: var(--as-green); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800; color: #fff; }
+.merchant-name { font-size: 14px; font-weight: 500; color: var(--as-dark); }
 
-/* Info rows */
-.info-card {
-  background: white; border: 1px solid var(--as-border); border-radius: 14px; overflow: hidden;
+/* Chain selector */
+.chain-selector-btn {
+  display: flex; align-items: center; gap: 8px; padding: 10px 16px;
+  border: 2px solid var(--as-green); border-radius: 999px; background: white;
+  cursor: pointer; font-family: 'Archivo', sans-serif; font-size: 14px; font-weight: 500;
+  color: var(--as-dark); margin: 0 auto; transition: all .15s;
 }
-.info-row {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 12px 14px; border-bottom: 1px solid var(--as-border);
+.chain-selector-btn:hover { background: rgba(0,152,89,.05); }
+.chain-selector-btn .swap-icon { color: var(--as-green); font-size: 16px; }
+.chain-selector-btn .chevron { color: var(--as-green); font-size: 12px; }
+.badge-sw { display: inline-flex; align-items: center; background: rgba(0,152,89,.1); border: 1px solid rgba(0,152,89,.25); border-radius: 999px; padding: 1px 7px; font-size: 10px; font-weight: 700; color: var(--as-green); }
+
+/* Chain list */
+.chain-list { display: none; background: white; border: 1px solid var(--as-border); border-radius: 14px; overflow: hidden; }
+.chain-list.open { display: block; }
+.chain-item {
+  display: flex; align-items: center; gap: 12px; padding: 12px 14px;
+  border-bottom: 1px solid var(--as-border); cursor: pointer; transition: background .1s;
 }
+.chain-item:last-child { border-bottom: none; }
+.chain-item:hover { background: rgba(0,152,89,.04); }
+.chain-item.selected { background: rgba(0,152,89,.08); border-left: 3px solid var(--as-green); }
+.chain-item.disabled { opacity: 0.4; cursor: not-allowed; }
+.chain-icon { font-size: 20px; width: 32px; text-align: center; }
+.chain-info { flex: 1; }
+.chain-name { font-size: 14px; font-weight: 600; color: var(--as-dark); }
+.chain-balance { font-size: 12px; color: var(--as-text); margin-top: 1px; }
+.chain-tag { font-size: 10px; font-weight: 600; color: var(--as-green); background: rgba(0,152,89,.1); padding: 2px 6px; border-radius: 4px; }
+.chain-tag.same { color: var(--as-text); background: rgba(0,0,0,.05); }
+
+/* Info card */
+.info-card { background: white; border: 1px solid var(--as-border); border-radius: 14px; }
+.info-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-bottom: 1px solid var(--as-border); }
 .info-row:last-child { border-bottom: none; }
 .info-lbl { font-size: 14px; color: var(--as-text); }
 .info-val { font-size: 14px; font-weight: 500; color: var(--as-dark); }
-.badge-sw {
-  display: inline-flex; align-items: center; background: rgba(0,152,89,.1);
-  border: 1px solid rgba(0,152,89,.25); border-radius: 999px; padding: 1px 7px;
-  font-size: 10px; font-weight: 700; color: var(--as-green); margin-left: 6px;
-}
 
 /* Quote box */
-.quote-box {
-  background: white; border: 1px solid var(--as-border); border-radius: 14px; overflow: hidden;
-}
-.qt-total {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 12px 14px; border-bottom: 1px solid var(--as-border);
-}
+.quote-box { background: white; border: 1px solid var(--as-border); border-radius: 14px; overflow: hidden; }
+.qt-total { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; }
 .qt-total-lbl { font-size: 15px; font-weight: 600; color: var(--as-dark); }
 .qt-total-val { font-size: 17px; font-weight: 700; color: var(--as-green); }
+.qt-expand { display: flex; align-items: center; justify-content: center; gap: 5px; width: 100%; padding: 8px; background: none; border: none; border-top: 1px solid var(--as-border); cursor: pointer; font-size: 12px; font-weight: 600; color: var(--as-text); font-family: 'Archivo', sans-serif; }
 .qt-rows { display: none; }
 .qt-rows.open { display: block; }
-.qt-row {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 10px 14px; border-bottom: 1px solid var(--as-border);
-}
-.qt-row:last-child { border-bottom: none; }
+.qt-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-top: 1px solid var(--as-border); }
 .qt-lbl { font-size: 13px; color: var(--as-text); }
 .qt-val { font-size: 13px; font-weight: 600; color: var(--as-dark); }
-.qt-expand {
-  display: flex; align-items: center; justify-content: center; gap: 5px;
-  width: 100%; padding: 8px; background: none; border: none; cursor: pointer;
-  font-size: 12px; font-weight: 600; color: var(--as-text); font-family: 'Archivo', sans-serif;
-  border-bottom: 1px solid var(--as-border);
-}
 
 /* Timer */
-.timer-pill {
-  display: flex; align-items: center; gap: 6px;
-  background: rgba(245,158,11,.1); border: 1px solid rgba(245,158,11,.3);
-  border-radius: 999px; padding: 4px 12px; font-size: 11.5px; font-weight: 600;
-  color: var(--orange); margin: 8px auto 0; width: fit-content;
-}
+.timer-pill { display: flex; align-items: center; gap: 6px; background: rgba(245,158,11,.1); border: 1px solid rgba(245,158,11,.3); border-radius: 999px; padding: 4px 12px; font-size: 11.5px; font-weight: 600; color: var(--orange); margin: 4px auto; width: fit-content; }
 .tdot { width: 6px; height: 6px; border-radius: 50%; background: var(--orange); animation: pulse 1s ease-in-out infinite; }
 @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:.3; } }
 
-/* Status */
-.status-box {
-  text-align: center; font-size: 13px; min-height: 20px; padding: 8px 0;
-}
-.status-box.success { color: var(--as-green); }
-.status-box.error { color: var(--red); }
-.status-box.pending { color: var(--orange); }
-.spinner {
-  display: inline-block; width: 14px; height: 14px;
-  border: 2px solid var(--orange); border-top-color: transparent;
-  border-radius: 50%; animation: spin 0.8s linear infinite; vertical-align: middle; margin-right: 6px;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-.tx-link { color: var(--as-green); text-decoration: underline; font-size: 12px; cursor: pointer; }
-
-/* Progress stepper */
+/* Stepper */
 .stepper { display: flex; align-items: center; justify-content: center; gap: 0; margin: 8px 0; }
-.step-circle {
-  width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-  font-size: 11px; font-weight: 700; flex-shrink: 0;
-}
+.step-col { display: flex; flex-direction: column; align-items: center; }
+.step-circle { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
 .step-circle.done { background: var(--as-green); color: white; }
 .step-circle.active { background: rgba(0,152,89,.15); border: 2px solid var(--as-green); color: var(--as-green); }
 .step-circle.pending { background: #f0f0f0; color: var(--as-text); }
 .step-line { width: 20px; height: 2px; background: var(--as-border); }
 .step-line.done { background: var(--as-green); }
-.step-label { font-size: 9px; color: var(--as-text); text-align: center; margin-top: 2px; }
-.step-col { display: flex; flex-direction: column; align-items: center; }
+.step-label { font-size: 9px; color: var(--as-text); margin-top: 2px; }
+
+/* Status */
+.status-box { text-align: center; font-size: 13px; min-height: 20px; padding: 4px 0; }
+.status-box.success { color: var(--as-green); }
+.status-box.error { color: var(--red); }
+.status-box.pending { color: var(--orange); }
+.spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--orange); border-top-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite; vertical-align: middle; margin-right: 6px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.tx-link { color: var(--as-green); text-decoration: underline; font-size: 12px; cursor: pointer; }
 
 /* Footer */
 .footer { padding: 12px 20px 32px; background: #FDFFFE; }
-.act-btn {
-  width: 100%; height: 52px; border-radius: 999px; border: none; cursor: pointer;
-  font-size: 16px; font-weight: 500; font-family: 'Archivo', sans-serif;
-  background: var(--as-dark); color: var(--as-brand-light); transition: opacity .15s;
-}
+.act-btn { width: 100%; height: 52px; border-radius: 999px; border: none; cursor: pointer; font-size: 16px; font-weight: 500; font-family: 'Archivo', sans-serif; background: var(--as-dark); color: var(--as-brand-light); transition: opacity .15s; }
 .act-btn:hover { opacity: .88; }
 .act-btn:disabled { opacity: .4; cursor: not-allowed; }
-
-/* Powered by */
-.powered { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 12px; opacity: .5; }
-.powered-icon {
-  width: 20px; height: 20px; background: var(--as-green); border-radius: 5px;
-  display: flex; align-items: center; justify-content: center;
-}
+.powered { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 8px; opacity: .5; }
+.powered-icon { width: 20px; height: 20px; background: var(--as-green); border-radius: 5px; display: flex; align-items: center; justify-content: center; }
 .powered span { font-size: 12px; font-weight: 700; color: var(--as-dark); }
 
 .error-page { text-align: center; padding: 40px 20px; }
@@ -166,7 +133,7 @@ body {
     <div class="content" id="content">Loading...</div>
 
     <div class="footer">
-        <button class="act-btn" id="btnPay" onclick="startPayment()">Confirm & Pay</button>
+        <button class="act-btn" id="btnPay" onclick="startPayment()" disabled>Select chain to continue</button>
         <div class="powered">
             <div class="powered-icon"><svg width="10" height="10" viewBox="0 0 32 32" fill="none"><path d="M8 22L16 10L24 22" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 18L22 18" stroke="white" stroke-width="2" stroke-linecap="round"/></svg></div>
             <span>AllScale</span>
@@ -174,32 +141,34 @@ body {
     </div>
 
 <script>
-// ==================== Parse URL params ====================
+// ==================== URL Params ====================
 const params = new URLSearchParams(window.location.search);
-const CHAIN_ID      = Number(params.get("chainId")) || 56;
-const CHECKOUT_ID   = params.get("checkout_id") || "";
-const TOKEN_SYMBOL  = params.get("token") || "USDT";
-const ORDER_AMOUNT  = params.get("amount") || "";
-const CHAIN_OUT_ID  = Number(params.get("chainOut")) || 0;
-const MERCHANT      = params.get("merchant") || "";
+const ORDER_AMOUNT  = params.get("amount") || "1";
+const MERCHANT      = params.get("merchant") || "Merchant";
+const CHAIN_OUT_ID  = Number(params.get("chainOut")) || 56;
 
-let CONTRACT      = params.get("contract") || "";
-let TOKEN         = params.get("tokenAddress") || "";
-let AMOUNT        = params.get("payAmount") || ORDER_AMOUNT;
-let COMMITMENT_ID = params.get("commitmentId") || "";
-let RECIPIENT     = params.get("recipient") || "";
-
-const SCAN_TO_PAY_MODE = !COMMITMENT_ID;
+// ==================== Chain Config ====================
+const CHAINS = [
+    { id: 56, name: "BNB Chain", icon: "\u{1F7E1}", rhinoId: "BINANCE", hex: "0x38", rpc: "https://bsc-dataseed.binance.org",
+      usdt: "0x55d398326f99059fF775485246999027B3197955", usdtDecimals: 18,
+      deposit: "0xb80a582fa430645a043bb4f6135321ee01005fef", explorer: "https://bscscan.com/tx/" },
+    { id: 42161, name: "Arbitrum", icon: "\u{1F535}", rhinoId: "ARBITRUM", hex: "0xa4b1", rpc: "https://arb1.arbitrum.io/rpc",
+      usdt: "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9", usdtDecimals: 6,
+      deposit: "0x10417734001162Ea139e8b044DFe28DbB8B28ad0", explorer: "https://arbiscan.io/tx/" },
+    { id: 1, name: "Ethereum", icon: "\u{269F}", rhinoId: "ETHEREUM", hex: "0x1", rpc: "https://eth.llamarpc.com",
+      usdt: "0xdAC17F958D2ee523a2206206994597C13D831ec7", usdtDecimals: 6,
+      deposit: "0x5d22045daceab03b158031ecb7d9d06fad24609b", explorer: "https://etherscan.io/tx/" },
+    { id: 137, name: "Polygon", icon: "\u{1F7E3}", rhinoId: "MATIC_POS", hex: "0x89", rpc: "https://polygon-rpc.com",
+      usdt: "0xc2132D05D31c914a87C6611C10748AEb04B58e8F", usdtDecimals: 6,
+      deposit: "", explorer: "https://polygonscan.com/tx/" },
+    { id: 8453, name: "Base", icon: "\u{1F539}", rhinoId: "BASE", hex: "0x2105", rpc: "https://mainnet.base.org",
+      usdt: "0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2", usdtDecimals: 6,
+      deposit: "", explorer: "https://basescan.org/tx/" },
+];
+const CHAIN_OUT = CHAINS.find(c => c.id === CHAIN_OUT_ID) || CHAINS[0];
 
 const RHINOFI_API = "https://api.rhino.fi";
 const RHINOFI_API_KEY = "PUBLIC-651d4898-f023-4f51-adcf-35f5b0653c2c";
-const CHAIN_MAP = { 56: "BINANCE", 42161: "ARBITRUM", 1: "ETHEREUM", 137: "MATIC_POS", 8453: "BASE", 10: "OPTIMISM" };
-const DEPOSIT_CONTRACTS = { 56: "0xb80a582fa430645a043bb4f6135321ee01005fef", 42161: "0x10417734001162Ea139e8b044DFe28DbB8B28ad0" };
-const TOKEN_ADDRESSES = { 56: { "USDT": "0x55d398326f99059fF775485246999027B3197955" }, 42161: { "USDT": "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9" } };
-const CHAIN_NAMES = { 1: "Ethereum", 56: "BNB Chain", 42161: "Arbitrum", 137: "Polygon", 8453: "Base", 10: "Optimism" };
-const CHAIN_HEX = { 1: "0x1", 56: "0x38", 42161: "0xa4b1", 137: "0x89", 8453: "0x2105", 10: "0xa" };
-const CHAIN_ICONS = { 56: "🟡", 42161: "🔵", 1: "⟠", 137: "🟣", 8453: "🔵", 10: "🔴" };
-const EXPLORERS = { 56: "https://bscscan.com/tx/", 1: "https://etherscan.io/tx/", 42161: "https://arbiscan.io/tx/" };
 
 const ERC20_ABI = [
     "function balanceOf(address) view returns (uint256)",
@@ -209,32 +178,22 @@ const ERC20_ABI = [
 ];
 const DEPOSIT_ABI = ["function depositWithId(address token, uint256 amount, uint256 commitmentId)"];
 
-let currentStep = 0; // 0=init, 1=deposit(active), 2=bridging, 3=completed
-let jwtToken = null; // saved for status polling
+// ==================== State ====================
+let walletSigner = null;
+let walletAddress = null;
+let selectedChain = null;
+let jwtToken = null;
+let commitmentId = null;
+let payAmount = null;
+let quoteTimer = null;
+let quoteCountdown = null;
+let currentStep = 0;
 
-function updateStepper() {
-    const steps = document.querySelectorAll('.step-circle');
-    const lines = document.querySelectorAll('.step-line');
-    if (!steps.length) return;
-    steps.forEach((s, i) => {
-        s.className = 'step-circle ' + (i < currentStep ? 'done' : i === currentStep ? 'active' : 'pending');
-        s.textContent = i < currentStep ? '✓' : (i + 1);
-    });
-    lines.forEach((l, i) => { l.className = 'step-line' + (i < currentStep ? ' done' : ''); });
-}
-
+// ==================== Render ====================
 function render() {
-    if (!ORDER_AMOUNT && !AMOUNT) {
-        document.getElementById("content").innerHTML = `<div class="error-page"><h2>Invalid Payment Link</h2><p style="color:var(--as-text)">Missing amount parameter</p></div>`;
-        document.getElementById("btnPay").style.display = "none";
-        return;
-    }
-
-    const displayAmount = SCAN_TO_PAY_MODE ? ORDER_AMOUNT : AMOUNT;
-    const parts = displayAmount.split(".");
-    const intPart = parts[0] || displayAmount;
+    const parts = ORDER_AMOUNT.split(".");
+    const intPart = parts[0] || ORDER_AMOUNT;
     const fracPart = parts[1] ? "." + parts[1] : ".00";
-    const recipientDisplay = MERCHANT || (RECIPIENT ? RECIPIENT.slice(0,8)+"..."+RECIPIENT.slice(-6) : "Merchant");
 
     document.getElementById("content").innerHTML = `
         <div class="amount-card">
@@ -242,67 +201,89 @@ function render() {
                 <span class="amount-num">${intPart}</span>
                 <span class="amount-frac">${fracPart} USDT</span>
             </div>
-            <div class="amount-chain">on ${CHAIN_NAMES[CHAIN_ID] || "Chain " + CHAIN_ID}</div>
-        </div>
-
-        <!-- Stepper -->
-        <div class="stepper">
-            <div class="step-col"><div class="step-circle active">1</div><div class="step-label">Deposit</div></div>
-            <div class="step-line"></div>
-            <div class="step-col"><div class="step-circle pending">2</div><div class="step-label">Bridging</div></div>
-            <div class="step-line"></div>
-            <div class="step-col"><div class="step-circle pending">3</div><div class="step-label">Completed</div></div>
-        </div>
-
-        <!-- Info -->
-        <div class="info-card">
-            <div class="info-row">
-                <span class="info-lbl">You pay</span>
-                <span class="info-val" id="pay-amount">${displayAmount} USDT</span>
-            </div>
-            <div class="info-row">
-                <span class="info-lbl">Merchant receives</span>
-                <span class="info-val">${ORDER_AMOUNT} USDT <span style="font-size:11px;color:var(--as-text);">on ${CHAIN_NAMES[CHAIN_OUT_ID] || ""}</span></span>
-            </div>
-            <div class="info-row">
-                <span class="info-lbl">Recipient</span>
-                <span class="info-val" id="recipient-val">${recipientDisplay}</span>
-            </div>
-            <div class="info-row">
-                <span class="info-lbl">Route</span>
-                <span class="info-val">${CHAIN_ICONS[CHAIN_ID]||""} ${CHAIN_NAMES[CHAIN_ID]||""} → ${CHAIN_ICONS[CHAIN_OUT_ID]||""} ${CHAIN_NAMES[CHAIN_OUT_ID]||""} <span class="badge-sw">Swidge</span></span>
+            <div class="merchant-badge">
+                <span style="font-size:12px;color:var(--as-text);">TO</span>
+                <div class="merchant-avatar">${MERCHANT.charAt(0).toUpperCase()}</div>
+                <span class="merchant-name">${MERCHANT}</span>
             </div>
         </div>
 
-        <!-- Quote details (shown after quote) -->
-        <div id="quote-section" style="display:none;">
-            <div class="quote-box">
+        <!-- Chain selector -->
+        <button class="chain-selector-btn" id="chainBtn" onclick="toggleChainList()">
+            <span class="swap-icon">\u{21C5}</span>
+            <span id="chainBtnLabel">Select payment chain</span>
+            <span class="chevron">\u{203A}</span>
+        </button>
+
+        <div class="chain-list" id="chainList">
+            ${CHAINS.map(c => `
+                <div class="chain-item" id="ci-${c.id}" onclick="selectChain(${c.id})">
+                    <span class="chain-icon">${c.icon}</span>
+                    <div class="chain-info">
+                        <div class="chain-name">USDT \u{00B7} ${c.name}</div>
+                        <div class="chain-balance" id="bal-${c.id}">Loading balance...</div>
+                    </div>
+                    ${c.id === CHAIN_OUT_ID ? '<span class="chain-tag same">Same chain</span>' : '<span class="chain-tag">Swidge</span>'}
+                </div>
+            `).join("")}
+        </div>
+
+        <!-- Quote section (hidden until chain selected) -->
+        <div id="quoteSection" style="display:none;">
+            <div class="info-card">
+                <div class="info-row">
+                    <span class="info-lbl">You pay</span>
+                    <span class="info-val" id="payAmountDisplay">--</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-lbl">Merchant receives</span>
+                    <span class="info-val">${ORDER_AMOUNT} USDT <span style="font-size:11px;color:var(--as-text);">on ${CHAIN_OUT.name}</span></span>
+                </div>
+                <div class="info-row">
+                    <span class="info-lbl">Route</span>
+                    <span class="info-val" id="routeDisplay">--</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-lbl">Recipient</span>
+                    <span class="info-val">${MERCHANT}</span>
+                </div>
+            </div>
+
+            <div class="quote-box" id="feeBox">
                 <div class="qt-total">
                     <span class="qt-total-lbl">Total fee</span>
-                    <span class="qt-total-val" id="qt-fee-total">—</span>
+                    <span class="qt-total-val" id="feeTotal">--</span>
                 </div>
-                <button class="qt-expand" id="qt-expand-btn" onclick="document.getElementById('qt-detail').classList.toggle('open');this.querySelector('span').textContent=document.getElementById('qt-detail').classList.contains('open')?'Hide breakdown':'See fee breakdown'">
+                <button class="qt-expand" onclick="document.getElementById('feeDetail').classList.toggle('open');this.querySelector('span').textContent=document.getElementById('feeDetail').classList.contains('open')?'Hide':'See fee breakdown'">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
                     <span>See fee breakdown</span>
                 </button>
-                <div class="qt-rows" id="qt-detail">
-                    <div class="qt-row"><span class="qt-lbl">Swidge Fee</span><span class="qt-val" id="qt-bridge">—</span></div>
-                    <div class="qt-row"><span class="qt-lbl">Platform Fee</span><span class="qt-val" id="qt-platform">—</span></div>
+                <div class="qt-rows" id="feeDetail">
+                    <div class="qt-row"><span class="qt-lbl">Swidge Fee</span><span class="qt-val" id="feeBridge">--</span></div>
+                    <div class="qt-row"><span class="qt-lbl">Platform Fee</span><span class="qt-val" id="feePlatform">--</span></div>
                 </div>
             </div>
-            <div class="timer-pill">
+
+            <div class="timer-pill" id="timerPill">
                 <div class="tdot"></div>
-                <span id="qt-timer">Quote valid for ~3 min</span>
+                <span id="timerText">Quote valid for ~3 min</span>
             </div>
         </div>
 
-        <!-- Status -->
+        <!-- Stepper (hidden until payment starts) -->
+        <div class="stepper" id="stepper" style="display:none;">
+            <div class="step-col"><div class="step-circle active" id="s1">1</div><div class="step-label">Deposit</div></div>
+            <div class="step-line" id="sl1"></div>
+            <div class="step-col"><div class="step-circle pending" id="s2">2</div><div class="step-label">Bridging</div></div>
+            <div class="step-line" id="sl2"></div>
+            <div class="step-col"><div class="step-circle pending" id="s3">3</div><div class="step-label">Completed</div></div>
+        </div>
+
         <div class="status-box" id="status"></div>
     `;
-    updateStepper();
 }
 
-// ==================== Wait for wallet ====================
+// ==================== Wallet ====================
 async function waitForEthereum(maxWait = 3000) {
     if (window.ethereum) return window.ethereum;
     return new Promise((resolve) => {
@@ -311,119 +292,200 @@ async function waitForEthereum(maxWait = 3000) {
     });
 }
 
-// ==================== Auto-init: connect wallet + quote on page load ====================
-let walletSigner = null;
-let walletAddress = null;
+async function autoConnect() {
+    setStatus("Connecting wallet...", "pending");
+    const ethereum = await waitForEthereum();
+    if (!ethereum) { setStatus("Wallet not found. Open in wallet browser.", "error"); return; }
 
-async function autoInit() {
-    const btn = document.getElementById("btnPay");
-    btn.disabled = true;
-    btn.textContent = "Loading...";
+    const provider = new ethers.providers.Web3Provider(ethereum);
+    await provider.send("eth_requestAccounts", []);
+    walletSigner = provider.getSigner();
+    walletAddress = await walletSigner.getAddress();
+    setStatus(`Connected: ${walletAddress.slice(0,6)}...${walletAddress.slice(-4)}`, "success");
 
-    try {
-        // Auto-connect wallet
-        setStatus("Connecting wallet...", "pending");
-        const ethereum = await waitForEthereum();
-        if (!ethereum) { setStatus("Wallet not found. Open in wallet browser.", "error"); return; }
+    // Load balances for all chains
+    loadBalances();
+}
 
-        const provider = new ethers.providers.Web3Provider(ethereum);
-        await provider.send("eth_requestAccounts", []);
-
-        const network = await provider.getNetwork();
-        if (network.chainId !== CHAIN_ID) {
-            setStatus(`Switching to ${CHAIN_NAMES[CHAIN_ID]}...`, "pending");
-            await ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: CHAIN_HEX[CHAIN_ID] }] });
+async function loadBalances() {
+    for (const chain of CHAINS) {
+        try {
+            const rpcProvider = new ethers.providers.JsonRpcProvider(chain.rpc);
+            const usdt = new ethers.Contract(chain.usdt, ERC20_ABI, rpcProvider);
+            const bal = await usdt.balanceOf(walletAddress);
+            const formatted = ethers.utils.formatUnits(bal, chain.usdtDecimals);
+            const el = document.getElementById(`bal-${chain.id}`);
+            if (el) el.textContent = `${Number(formatted).toFixed(2)} USDT`;
+        } catch (e) {
+            const el = document.getElementById(`bal-${chain.id}`);
+            if (el) el.textContent = "Unable to load";
         }
-
-        walletSigner = new ethers.providers.Web3Provider(ethereum).getSigner();
-        walletAddress = await walletSigner.getAddress();
-
-        // Auto-quote (Scan to Pay mode)
-        if (SCAN_TO_PAY_MODE) {
-            setStatus("Getting quote...", "pending");
-            const authRes = await fetch(`${RHINOFI_API}/authentication/auth/apiKey`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ apiKey: RHINOFI_API_KEY }) });
-            const authText = await authRes.text();
-            let jwt = authText;
-            try { const d = JSON.parse(authText); jwt = d.jwt || d.token || authText; } catch(e) {}
-            jwtToken = jwt;
-
-            const chainIn = CHAIN_MAP[CHAIN_ID] || "BINANCE";
-            const chainOut = CHAIN_MAP[CHAIN_OUT_ID] || "ARBITRUM";
-            const quoteRes = await fetch(`${RHINOFI_API}/bridge/quote/user`, {
-                method: "POST", headers: { "Content-Type": "application/json", "Authorization": jwt },
-                body: JSON.stringify({ token: TOKEN_SYMBOL, chainIn, chainOut, amount: ORDER_AMOUNT, mode: "receive", depositor: walletAddress, recipient: walletAddress })
-            });
-            const quote = await quoteRes.json();
-            if (!quote.quoteId) throw new Error(JSON.stringify(quote));
-
-            setStatus("Locking quote...", "pending");
-            const commitRes = await fetch(`${RHINOFI_API}/bridge/quote/commit/${quote.quoteId}`, {
-                method: "POST", headers: { "Content-Type": "application/json", "Authorization": jwt }, body: JSON.stringify({})
-            });
-            const commit = await commitRes.json();
-
-            CONTRACT = DEPOSIT_CONTRACTS[CHAIN_ID] || "";
-            TOKEN = (TOKEN_ADDRESSES[CHAIN_ID] || {})[TOKEN_SYMBOL] || "";
-            AMOUNT = quote.payAmount;
-            COMMITMENT_ID = commit.commitmentId || commit.quoteId || quote.quoteId;
-            RECIPIENT = walletAddress;
-
-            // Update UI with quote data
-            const payEl = document.getElementById("pay-amount");
-            if (payEl) payEl.textContent = `${AMOUNT} USDT`;
-            const amountNum = document.querySelector(".amount-num");
-            const amountFrac = document.querySelector(".amount-frac");
-            if (amountNum && amountFrac) {
-                const parts = AMOUNT.split(".");
-                amountNum.textContent = parts[0] || AMOUNT;
-                amountFrac.textContent = (parts[1] ? "." + parts[1] : ".00") + " USDT";
-            }
-            const qs = document.getElementById("quote-section");
-            if (qs) qs.style.display = "";
-            const fee = quote.fees || {};
-            const feeEl = document.getElementById("qt-fee-total");
-            if (feeEl) feeEl.textContent = `${fee.fee || "0"} USDT`;
-            const bridgeEl = document.getElementById("qt-bridge");
-            if (bridgeEl) bridgeEl.textContent = `${fee.gasFee || "0"} USDT`;
-            const platformEl = document.getElementById("qt-platform");
-            if (platformEl) platformEl.textContent = `${fee.platformFee || "0"} USDT`;
-        }
-
-        // Ready to pay
-        setStatus(`Ready. Connected: ${walletAddress.slice(0,6)}...${walletAddress.slice(-4)}`, "success");
-        btn.textContent = "Confirm & Pay";
-        btn.disabled = false;
-    } catch (e) {
-        setStatus(`Init failed: ${e.message}`, "error");
-        document.getElementById("btnPay").textContent = "Retry";
-        document.getElementById("btnPay").disabled = false;
-        document.getElementById("btnPay").onclick = autoInit;
     }
 }
 
-// ==================== Payment flow (only approve + deposit) ====================
-async function startPayment() {
+// ==================== Chain Selection ====================
+function toggleChainList() {
+    document.getElementById("chainList").classList.toggle("open");
+}
+
+async function selectChain(chainId) {
+    selectedChain = CHAINS.find(c => c.id === chainId);
+    if (!selectedChain) return;
+
+    // Update button
+    const isSwidge = chainId !== CHAIN_OUT_ID;
+    document.getElementById("chainBtnLabel").innerHTML =
+        `${selectedChain.icon} USDT \u{00B7} ${selectedChain.name} ${isSwidge ? '<span class="badge-sw">\u{26A1} Swidge</span>' : ''}`;
+    document.getElementById("chainList").classList.remove("open");
+
+    // Highlight selected
+    document.querySelectorAll(".chain-item").forEach(el => el.classList.remove("selected"));
+    document.getElementById(`ci-${chainId}`).classList.add("selected");
+
+    // Switch wallet chain
+    setStatus(`Switching to ${selectedChain.name}...`, "pending");
+    try {
+        const ethereum = await waitForEthereum();
+        await ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: selectedChain.hex }] });
+        walletSigner = new ethers.providers.Web3Provider(ethereum).getSigner();
+    } catch (e) {
+        setStatus(`Failed to switch chain: ${e.message}`, "error");
+        return;
+    }
+
+    // Get quote
+    await getQuote();
+}
+
+// ==================== Quote ====================
+async function getQuote() {
+    if (!selectedChain || !walletAddress) return;
+
+    setStatus("Getting quote...", "pending");
     const btn = document.getElementById("btnPay");
     btn.disabled = true;
+    btn.textContent = "Getting quote...";
+
+    // Clear old timer
+    if (quoteTimer) clearInterval(quoteTimer);
+    if (quoteCountdown) clearInterval(quoteCountdown);
 
     try {
-        if (!walletSigner || !COMMITMENT_ID) {
-            setStatus("Not ready. Reconnecting...", "pending");
-            await autoInit();
-            return;
+        // Auth
+        if (!jwtToken) {
+            const authRes = await fetch(`${RHINOFI_API}/authentication/auth/apiKey`, {
+                method: "POST", headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ apiKey: RHINOFI_API_KEY })
+            });
+            const authText = await authRes.text();
+            try { const d = JSON.parse(authText); jwtToken = d.jwt || d.token || authText; } catch(e) { jwtToken = authText; }
         }
 
-        // Approve
-        const usdt = new ethers.Contract(TOKEN, ERC20_ABI, walletSigner);
-        const decimals = await usdt.decimals();
-        const amountWei = ethers.utils.parseUnits(AMOUNT, decimals);
-        const balance = await usdt.balanceOf(walletAddress);
-        if (balance.lt(amountWei)) { setStatus(`Insufficient USDT: ${ethers.utils.formatUnits(balance, decimals)}`, "error"); btn.disabled = false; return; }
+        // Quote
+        const quoteRes = await fetch(`${RHINOFI_API}/bridge/quote/user`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Authorization": jwtToken },
+            body: JSON.stringify({
+                token: "USDT",
+                chainIn: selectedChain.rhinoId,
+                chainOut: CHAIN_OUT.rhinoId,
+                amount: ORDER_AMOUNT,
+                mode: "receive",
+                depositor: walletAddress,
+                recipient: walletAddress,
+            })
+        });
+        const quote = await quoteRes.json();
+        if (!quote.quoteId) throw new Error(JSON.stringify(quote));
 
-        const allowance = await usdt.allowance(walletAddress, CONTRACT);
+        // Commit
+        setStatus("Locking quote...", "pending");
+        const commitRes = await fetch(`${RHINOFI_API}/bridge/quote/commit/${quote.quoteId}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Authorization": jwtToken },
+            body: JSON.stringify({})
+        });
+        const commit = await commitRes.json();
+
+        // Save state
+        payAmount = quote.payAmount;
+        commitmentId = commit.commitmentId || commit.quoteId || quote.quoteId;
+        const fees = quote.fees || {};
+
+        // Update UI
+        document.getElementById("quoteSection").style.display = "";
+        document.getElementById("payAmountDisplay").textContent = `${payAmount} USDT`;
+        document.getElementById("routeDisplay").innerHTML =
+            `${selectedChain.icon} ${selectedChain.name} \u{2192} ${CHAIN_OUT.icon} ${CHAIN_OUT.name} <span class="badge-sw">Swidge</span>`;
+        document.getElementById("feeTotal").textContent = `${fees.fee || "0"} USDT`;
+        document.getElementById("feeBridge").textContent = `${fees.gasFee || "0"} USDT`;
+        document.getElementById("feePlatform").textContent = `${fees.platformFee || "0"} USDT`;
+
+        // Timer countdown
+        const expiresAt = new Date(quote.expiresAt).getTime();
+        startCountdown(expiresAt);
+
+        // Auto-refresh 30s before expiry
+        const refreshIn = Math.max((expiresAt - Date.now() - 30000), 10000);
+        quoteTimer = setTimeout(() => getQuote(), refreshIn);
+
+        btn.textContent = "Confirm & Pay";
+        btn.disabled = false;
+        setStatus(`Quote ready. Pay ${payAmount} USDT`, "success");
+    } catch (e) {
+        setStatus(`Quote failed: ${e.message}`, "error");
+        btn.textContent = "Retry Quote";
+        btn.disabled = false;
+        btn.onclick = () => getQuote();
+    }
+}
+
+function startCountdown(expiresAt) {
+    if (quoteCountdown) clearInterval(quoteCountdown);
+    const timerEl = document.getElementById("timerText");
+    quoteCountdown = setInterval(() => {
+        const remaining = Math.max(0, Math.floor((expiresAt - Date.now()) / 1000));
+        if (remaining <= 0) {
+            timerEl.textContent = "Quote expired, refreshing...";
+            clearInterval(quoteCountdown);
+        } else {
+            const m = Math.floor(remaining / 60);
+            const s = remaining % 60;
+            timerEl.textContent = `Quote expires in ${m}:${s.toString().padStart(2, '0')}`;
+        }
+    }, 1000);
+}
+
+// ==================== Payment ====================
+async function startPayment() {
+    if (!selectedChain || !commitmentId || !walletSigner) return;
+
+    const btn = document.getElementById("btnPay");
+    btn.disabled = true;
+    btn.onclick = startPayment; // reset onclick
+
+    // Clear quote timer
+    if (quoteTimer) clearTimeout(quoteTimer);
+    if (quoteCountdown) clearInterval(quoteCountdown);
+
+    try {
+        // Show stepper
+        document.getElementById("stepper").style.display = "";
+
+        // Approve
+        const usdt = new ethers.Contract(selectedChain.usdt, ERC20_ABI, walletSigner);
+        const decimals = await usdt.decimals();
+        const amountWei = ethers.utils.parseUnits(payAmount, decimals);
+        const balance = await usdt.balanceOf(walletAddress);
+        if (balance.lt(amountWei)) {
+            setStatus(`Insufficient USDT: ${ethers.utils.formatUnits(balance, decimals)}`, "error");
+            btn.disabled = false; return;
+        }
+
+        const allowance = await usdt.allowance(walletAddress, selectedChain.deposit);
         if (allowance.lt(amountWei)) {
             setStatus("Approve USDT... (confirm in wallet)", "pending");
-            const approveTx = await usdt.approve(CONTRACT, ethers.constants.MaxUint256);
+            const approveTx = await usdt.approve(selectedChain.deposit, ethers.constants.MaxUint256);
             setStatus("Waiting for approve...", "pending");
             await approveTx.wait();
         }
@@ -431,28 +493,24 @@ async function startPayment() {
         // Deposit
         currentStep = 1; updateStepper();
         setStatus("Sending deposit... (confirm in wallet)", "pending");
-        const depositContract = new ethers.Contract(CONTRACT, DEPOSIT_ABI, walletSigner);
-        const commitUint256 = ethers.BigNumber.from("0x" + COMMITMENT_ID);
-        const tx = await depositContract.depositWithId(TOKEN, amountWei, commitUint256);
-        const explorer = EXPLORERS[CHAIN_ID] || "";
-        const destExplorer = EXPLORERS[CHAIN_OUT_ID] || "";
+        const depositContract = new ethers.Contract(selectedChain.deposit, DEPOSIT_ABI, walletSigner);
+        const commitUint256 = ethers.BigNumber.from("0x" + commitmentId);
+        const tx = await depositContract.depositWithId(selectedChain.usdt, amountWei, commitUint256);
 
-        setStatus("Waiting for on-chain confirmation...", "pending");
+        setStatus("Waiting for confirmation...", "pending");
         await tx.wait();
 
-        // Step 2: Bridging — poll Rhino.fi status for destination arrival
+        // Bridging
         currentStep = 2; updateStepper();
-        const destChain = CHAIN_NAMES[CHAIN_OUT_ID] || "destination";
-        setStatus(`Deposit confirmed! Bridging to ${destChain}...`, "pending");
+        setStatus(`Deposit confirmed! Bridging to ${CHAIN_OUT.name}...`, "pending");
 
-        // Wait 5s then mark as completed
         await new Promise(r => setTimeout(r, 5000));
 
-        // Step 3: Completed
+        // Completed
         currentStep = 3; updateStepper();
-        setStatus("✅ Payment complete! Merchant has been paid.", "success");
+        setStatus("\u{2705} Payment complete! Merchant has been paid.", "success");
         const statusEl = document.getElementById("status");
-        statusEl.innerHTML += `<br><a class="tx-link" href="${explorer}${tx.hash}" target="_blank">View deposit tx</a>`;
+        statusEl.innerHTML += `<br><a class="tx-link" href="${selectedChain.explorer}${tx.hash}" target="_blank">View deposit tx</a>`;
 
         btn.textContent = "Done";
         btn.disabled = false;
@@ -468,7 +526,7 @@ async function startPayment() {
                     </div>
                     <div style="background:var(--as-card);border:1px solid var(--as-border);border-radius:12px;padding:16px 20px;width:100%;">
                         <div style="font-size:13px;color:var(--as-text);margin-bottom:4px;">You can now close this page</div>
-                        <div style="font-size:15px;font-weight:600;color:var(--as-dark);">Tap ← to return to wallet</div>
+                        <div style="font-size:15px;font-weight:600;color:var(--as-dark);">Tap \u{2190} to return to wallet</div>
                     </div>
                 </div>`;
             document.querySelector(".footer").style.display = "none";
@@ -480,6 +538,17 @@ async function startPayment() {
     }
 }
 
+function updateStepper() {
+    const steps = document.querySelectorAll('.step-circle');
+    const lines = document.querySelectorAll('.step-line');
+    if (!steps.length) return;
+    steps.forEach((s, i) => {
+        s.className = 'step-circle ' + (i < currentStep ? 'done' : i === currentStep ? 'active' : 'pending');
+        s.textContent = i < currentStep ? '\u{2713}' : (i + 1);
+    });
+    lines.forEach((l, i) => { l.className = 'step-line' + (i < currentStep ? ' done' : ''); });
+}
+
 function setStatus(msg, type) {
     const el = document.getElementById("status");
     if (!el) return;
@@ -488,9 +557,9 @@ function setStatus(msg, type) {
     el.innerHTML = `${icon}${msg}`;
 }
 
+// ==================== Init ====================
 render();
-// Auto-init: connect wallet + get quote on page load
-setTimeout(autoInit, 500);
+setTimeout(autoConnect, 500);
 </script>
 </body>
 </html>
