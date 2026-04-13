@@ -222,6 +222,10 @@ async function startPayment() {
                 AMOUNT = quote.payAmount;
                 COMMITMENT_ID = commit.commitmentId || commit.quoteId || quote.quoteId;
                 RECIPIENT = userAddress;
+                // Update display with real values
+                document.querySelector(".amount-display").textContent = `${AMOUNT} USDT`;
+                const infoRows = document.querySelectorAll(".info-row .value");
+                if (infoRows[2]) infoRows[2].textContent = RECIPIENT ? RECIPIENT.slice(0,8) + "..." + RECIPIENT.slice(-6) : userAddress.slice(0,8) + "..." + userAddress.slice(-6);
                 setStatus(`Quote: pay ${AMOUNT} USDT → receive ${quote.receiveAmount} USDT`, "success");
             } catch (e) {
                 setStatus(`Quote failed: ${e.message}`, "error");
